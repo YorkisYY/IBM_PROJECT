@@ -3,7 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("kotlin-parcelize")
     id("org.jetbrains.kotlin.plugin.compose") version "2.0.21"
-    kotlin("plugin.serialization") version "1.9.10"
+    kotlin("plugin.serialization") version "2.0.21"
 }
 
 
@@ -126,7 +126,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 
 
-    
+
 
 
 

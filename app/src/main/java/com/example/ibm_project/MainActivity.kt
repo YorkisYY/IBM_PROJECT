@@ -1,8 +1,11 @@
 package com.example.ibm_project
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -12,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import ui.components.UserInputField
 import ui.components.ChatBubble
 import com.example.ibm_project.ui.theme.IBM_PROJECTTheme
@@ -20,17 +24,39 @@ import kotlinx.coroutines.launch
 import com.example.ibm_project.FilamentViewer
 import com.google.ar.core.ArCoreApk
 import android.util.Log
-import watsonx.WatsonAIService
-import utils.rememberTypewriterEffect // 🆕 導入打字機效果
-
+import watsonx.WatsonAIEnhanced  // 🔄 改為使用 Enhanced
+import utils.rememberTypewriterEffect
+import functions.WeatherFunctions 
 class MainActivity : ComponentActivity() {
 
     private var filamentViewer: FilamentViewer? = null
+
+    // 🆕 權限請求啟動器
+    private val locationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+        
+        when {
+            fineLocationGranted || coarseLocationGranted -> {
+                Log.d("MainActivity", "✅ 位置權限已授予")
+                // 權限已授予，可以使用位置功能
+            }
+            else -> {
+                Log.w("MainActivity", "⚠️ 位置權限被拒絕，將使用IP定位")
+                // 權限被拒絕，將使用IP定位作為備用方案
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Log.e("TEST_LOG", "=== MainActivity onCreate 開始 ===")
         super.onCreate(savedInstanceState)
         Log.e("TEST_LOG", "=== super.onCreate 完成 ===")
+
+        // 🆕 請求位置權限（如果需要GPS定位）
+        requestLocationPermissionIfNeeded()
 
         // 隱藏標題列
         try {
@@ -49,6 +75,32 @@ class MainActivity : ComponentActivity() {
             }
         }
         Log.e("TEST_LOG", "=== onCreate 結束 ===")
+    }
+
+    /**
+     * 🆕 請求位置權限（如果需要GPS定位）
+     */
+    private fun requestLocationPermissionIfNeeded() {
+        val fineLocationPermission = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.ACCESS_FINE_LOCATION
+        )
+        val coarseLocationPermission = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+        
+        if (fineLocationPermission != PackageManager.PERMISSION_GRANTED && 
+            coarseLocationPermission != PackageManager.PERMISSION_GRANTED) {
+            
+            Log.d("MainActivity", "🔧 請求位置權限...")
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        } else {
+            Log.d("MainActivity", "✅ 位置權限已存在")
+        }
     }
 
     @Composable
@@ -135,7 +187,7 @@ class MainActivity : ComponentActivity() {
                 filamentViewer?.onResume()
                 Log.d("MainActivity", "✅ 渲染循環已啟動")
                 
-                // 測試 Watson AI 連接
+                // 測試 Watson AI Enhanced 連接
                 delay(2000)
                 testWatsonAIConnection { status ->
                     aiConnectionStatus = status
@@ -298,49 +350,53 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * 使用 Watson AI 處理用戶消息 - 完全保持原邏輯
+     * 🔄 使用 Watson AI Enhanced 處理用戶消息 - 支持 Function Calling
      */
     private suspend fun processUserMessage(message: String): String {
         return try {
-            Log.d("MainActivity", "🤖 調用 Watson AI: $message")
+            Log.d("MainActivity", "🤖 調用 Watson AI Enhanced: $message")
             
-            val result = WatsonAIService.getAIResponse(message)
+            val result = WatsonAIEnhanced.getEnhancedAIResponse(message)
             
             if (result.success && result.response.isNotEmpty()) {
-                Log.d("MainActivity", "✅ AI 回复成功")
+                Log.d("MainActivity", "✅ Enhanced AI 回复成功")
                 result.response
             } else {
-                Log.e("MainActivity", "❌ AI 回复失败: ${result.error}")
+                Log.e("MainActivity", "❌ Enhanced AI 回复失败: ${result.error}")
                 "AI connection failed 😿"
             }
             
         } catch (e: Exception) {
-            Log.e("MainActivity", "❌ AI 调用异常", e)
+            Log.e("MainActivity", "❌ Enhanced AI 调用异常", e)
             "AI connection failed 😿"
         }
     }
 
     /**
-     * 測試 Watson AI 連接 - 完全保持原邏輯
+     * 🔄 測試 Watson AI Enhanced 連接 - 支持 Function Calling
      */
     private suspend fun testWatsonAIConnection(onStatusUpdate: (String) -> Unit) {
         try {
-            Log.d("MainActivity", "🔧 測試 Watson AI 連接...")
-            onStatusUpdate("測試 AI 連接中...")
+            Log.d("MainActivity", "🔧 測試 Watson AI Enhanced 連接...")
+            onStatusUpdate("初始化 Enhanced AI...")
             
-            val result = WatsonAIService.testConnection()
+            // 🆕 初始化 Enhanced 服務
+            WatsonAIEnhanced.initialize(this@MainActivity)
+            
+            onStatusUpdate("測試 Enhanced AI 連接中...")
+            val result = WatsonAIEnhanced.testEnhancedService()
             
             if (result.success) {
-                Log.d("MainActivity", "✅ Watson AI 連接成功")
-                onStatusUpdate("AI 已連接")
+                Log.d("MainActivity", "✅ Watson AI Enhanced 連接成功")
+                onStatusUpdate("Enhanced AI 已連接 (支持智能功能)")
             } else {
-                Log.e("MainActivity", "❌ Watson AI 連接失敗: ${result.error}")
-                onStatusUpdate("AI 連接失敗")
+                Log.e("MainActivity", "❌ Watson AI Enhanced 連接失敗: ${result.error}")
+                onStatusUpdate("Enhanced AI 連接失敗")
             }
             
         } catch (e: Exception) {
-            Log.e("MainActivity", "❌ Watson AI 測試異常", e)
-            onStatusUpdate("AI 連接失敗")
+            Log.e("MainActivity", "❌ Watson AI Enhanced 測試異常", e)
+            onStatusUpdate("Enhanced AI 連接失敗")
         }
     }
 
