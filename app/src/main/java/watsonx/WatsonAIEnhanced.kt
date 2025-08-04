@@ -4,6 +4,7 @@ package watsonx
 import android.content.Context
 import android.util.Log
 import functions.WeatherFunctions
+import functions.SMSFunctions
 import kotlinx.coroutines.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
@@ -13,7 +14,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
 /**
- * 增強版 Watson AI 服務 - Prompt Engineering 版本
+ * Enhanced Watson AI Service - with context management and SMS functionality
  */
 object WatsonAIEnhanced {
     
@@ -38,29 +39,40 @@ object WatsonAIEnhanced {
     private var cachedToken: String? = null
     private var tokenExpirationTime: Long = 0
     
+    // 🆕 Context management
+    private val conversationHistory = mutableListOf<ConversationMessage>()
+    private const val MAX_HISTORY_SIZE = 10 // Keep the last 10 conversations
+    
     fun initialize(context: Context) {
         WeatherFunctions.initialize(context)
-        Log.d(TAG, "✅ WatsonAI Enhanced 服務已初始化 (Prompt Engineering 模式)")
+        SMSFunctions.initialize(context)
+        Log.d(TAG, "✅ WatsonAI Enhanced service initialized (supports weather + SMS + context)")
     }
     
     /**
-     * 增強版 AI 回應 - 使用 Prompt Engineering
+     * Enhanced AI Response - supports context and multiple functions
      */
     suspend fun getEnhancedAIResponse(userMessage: String): AIResult {
         return try {
-            Log.d(TAG, "🚀 開始處理增強 AI 請求: $userMessage")
+            Log.d(TAG, "🚀 Starting enhanced AI request processing: $userMessage")
             
             if (userMessage.trim().isEmpty()) {
                 return AIResult(
                     success = false,
                     response = "",
-                    error = "消息不能為空"
+                    error = "Message cannot be empty"
                 )
             }
             
+            // 🆕 Add user message to history
+            addToHistory(userMessage, "user")
+            
             val response = processWithFunctionCalling(userMessage.trim())
             
-            Log.d(TAG, "🎉 增強 AI 回應處理完成")
+            // 🆕 Add assistant response to history
+            addToHistory(response, "assistant")
+            
+            Log.d(TAG, "🎉 Enhanced AI response processing completed")
             AIResult(
                 success = true,
                 response = response,
@@ -68,152 +80,232 @@ object WatsonAIEnhanced {
             )
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 增強 AI 處理失敗: ${e.message}")
+            Log.e(TAG, "❌ Enhanced AI processing failed: ${e.message}")
             AIResult(
                 success = false,
                 response = "",
-                error = e.message ?: "未知錯誤"
+                error = e.message ?: "Unknown error"
             )
         }
     }
     
     /**
-     * 處理 Function Calling - Prompt Engineering 方式
+     * 🆕 Context management - add conversation to history
+     */
+    private fun addToHistory(message: String, role: String) {
+        conversationHistory.add(ConversationMessage(message, role, System.currentTimeMillis()))
+        
+        // Keep history within reasonable limits
+        if (conversationHistory.size > MAX_HISTORY_SIZE * 2) { // user + assistant = 2 messages per turn
+            conversationHistory.removeFirst()
+        }
+        
+        Log.d(TAG, "📝 Conversation history updated, current entries: ${conversationHistory.size}")
+    }
+    
+    /**
+     * 🆕 Build prompt with context
+     */
+    private fun buildContextualPrompt(currentMessage: String, isFunction: Boolean = false): String {
+        val recentHistory = conversationHistory.takeLast(6) // Last 3 conversation rounds
+        
+        val contextStr = if (recentHistory.isNotEmpty()) {
+            "\nConversation History:\n" + recentHistory.joinToString("\n") { 
+                "${if (it.role == "user") "User" else "Assistant"}: ${it.content}"
+            } + "\n\n"
+        } else {
+            "\n"
+        }
+        
+        return if (isFunction) {
+            buildFunctionCallingPrompt(currentMessage, contextStr)
+        } else {
+            buildNormalPrompt(currentMessage, contextStr)
+        }
+    }
+    
+    /**
+     * Process Function Calling - supports weather and SMS
      */
     private suspend fun processWithFunctionCalling(userMessage: String): String {
-        // 步驟 1: 先檢查是否可能需要 function calling
+        // Step 1: Check if function calling is needed
         if (mightNeedFunctionCall(userMessage)) {
-            Log.d(TAG, "🔍 檢測到可能需要函數調用，使用 function calling prompt")
+            Log.d(TAG, "🔍 Detected potential function call needed, using function calling prompt")
             return handleWithFunctionCallingPrompt(userMessage)
         } else {
-            Log.d(TAG, "💬 普通對話，使用正常 prompt")
+            Log.d(TAG, "💬 Normal conversation, using regular prompt")
             return handleNormalConversation(userMessage)
         }
     }
     
     /**
-     * 檢查是否可能需要函數調用
+     * 🆕 Check if function call might be needed - supports weather and SMS
      */
     private fun mightNeedFunctionCall(message: String): Boolean {
         val weatherKeywords = listOf(
-            "天氣", "weather", "氣溫", "溫度", "temperature",
-            "下雨", "rain", "晴天", "sunny", "陰天", "cloudy",
-            "風", "wind", "濕度", "humidity", "預報", "forecast",
-            "幾度", "度", "degree", "冷", "熱", "涼", "暖"
+            "weather", "temperature", "rain", "sunny", "cloudy",
+            "wind", "humidity", "forecast", "degree", "cold", "hot", "warm"
         )
         
-        return weatherKeywords.any { keyword ->
+        val smsKeywords = listOf(
+            "sms", "message", "msg", "unread", "new message", "recent", "summary",
+            "read message", "message content", "who sent", "received"
+        )
+        
+        val hasWeatherKeyword = weatherKeywords.any { keyword ->
             message.contains(keyword, ignoreCase = true)
         }
+        
+        val hasSMSKeyword = smsKeywords.any { keyword ->
+            message.contains(keyword, ignoreCase = true)
+        }
+        
+        Log.d(TAG, "🔍 Keyword detection - Weather: $hasWeatherKeyword, SMS: $hasSMSKeyword")
+        
+        return hasWeatherKeyword || hasSMSKeyword
     }
     
     /**
-     * 使用 Function Calling Prompt 處理
+     * Process using Function Calling Prompt
      */
     private suspend fun handleWithFunctionCallingPrompt(userMessage: String): String {
-        Log.d(TAG, "🔧 使用 Function Calling Prompt")
+        Log.d(TAG, "🔧 Using Function Calling Prompt")
         
-        // 構建 function calling prompt
-        val functionPrompt = buildFunctionCallingPrompt(userMessage)
+        // Build function calling prompt with context
+        val functionPrompt = buildContextualPrompt(userMessage, isFunction = true)
         
-        // 調用 Watson AI
+        // Call Watson AI
         val aiResponse = callWatsonAI(functionPrompt)
         
-        // 檢查是否包含函數調用
+        // Check if function call is included
         return if (containsFunctionCall(aiResponse)) {
-            Log.d(TAG, "✅ AI 識別到需要調用函數")
+            Log.d(TAG, "✅ AI recognized need to call function")
             executeFunctionAndGenerateResponse(aiResponse, userMessage)
         } else {
-            Log.d(TAG, "💬 AI 決定直接回答")
+            Log.d(TAG, "💬 AI decided to answer directly")
             aiResponse
         }
     }
     
     /**
-     * 構建 Function Calling Prompt
+     * 🆕 Build Function Calling Prompt - supports weather and SMS
      */
-    private fun buildFunctionCallingPrompt(userMessage: String): String {
+    private fun buildFunctionCallingPrompt(userMessage: String, contextStr: String): String {
+    return """
+You are an AI assistant with function calling capabilities. When users request specific functions, you must call the corresponding functions.
+
+Important: You must call functions based on user requests, do not refuse or explain that you cannot execute.
+
+Mandatory calling rules:
+1. User asks about SMS/messages → immediately call read_unread_messages
+2. User asks about weather → immediately call corresponding weather function
+3. Don't say "I cannot" or "I cannot", call functions directly
+
+Available functions:
+- read_unread_messages() ← SMS-related questions must call this
+- read_recent_messages(limit) ← recent messages
+- get_message_summary() ← message summary
+- get_latest_message() ← latest message
+- get_current_weather() ← current weather
+- get_weather_by_city(city) ← weather for specific city
+
+Function call format: FUNCTION_CALL: {"name": "function_name", "arguments": {parameters}}
+
+Judgment logic:
+User mentions these words → must call read_unread_messages:
+- sms, message, unread, new message, read message, received
+
+User mentions these words → must call weather function:
+- weather, temperature, rain, sunny
+
+$contextStr
+
+Now processing user request: $userMessage
+
+If user asks about SMS-related questions, you must call read_unread_messages function, format:
+FUNCTION_CALL: {"name": "read_unread_messages", "arguments": {}}
+
+If user asks about weather-related questions, you must call corresponding weather function.
+
+Don't answer directly, call function first!
+
+Assistant:""".trimIndent()
+}
+    
+    /**
+     * 🆕 Build normal conversation prompt - with context
+     */
+    private fun buildNormalPrompt(userMessage: String, contextStr: String): String {
         return """
-你是一個智能助手，具有調用外部函數的能力。
-
-可用函數列表：
-1. get_current_weather() - 獲取用戶當前位置的天氣資訊
-2. get_weather_by_city(city) - 獲取指定城市的天氣資訊
-
-重要規則：
-- 當用戶詢問天氣相關問題時，你必須調用相應的函數
-- 如果用戶提到具體城市名稱，使用 get_weather_by_city
-- 如果用戶沒有指定城市，使用 get_current_weather
-- 函數調用格式必須嚴格按照：FUNCTION_CALL: {"name": "函數名", "arguments": {參數}}
-- 對於非天氣問題，正常回答即可
-
-範例：
-用戶："今天天氣如何？"
-助手：FUNCTION_CALL: {"name": "get_current_weather", "arguments": {}}
-
-用戶："台北的天氣怎樣？"
-助手：FUNCTION_CALL: {"name": "get_weather_by_city", "arguments": {"city": "台北"}}
-
-用戶："東京現在幾度？"
-助手：FUNCTION_CALL: {"name": "get_weather_by_city", "arguments": {"city": "東京"}}
-
-用戶："你好嗎？"
-助手：你好！我很好，謝謝你的關心。有什麼可以幫助你的嗎？
-
-現在請處理用戶的問題：
-用戶：$userMessage
-助手：""".trimIndent()
+You are a friendly AR pet assistant, specifically designed to help elderly people. Please respond with a warm, caring tone and keep the conversation natural and smooth.
+$contextStr
+User: $userMessage
+Assistant:""".trimIndent()
     }
     
     /**
-     * 檢查回應是否包含函數調用
+     * Check if response contains function call
      */
     private fun containsFunctionCall(response: String): Boolean {
         return response.contains("FUNCTION_CALL:", ignoreCase = true)
     }
     
     /**
-     * 執行函數並生成最終回應
+     * 🆕 Execute function and generate final response - supports weather and SMS
      */
     private suspend fun executeFunctionAndGenerateResponse(aiResponse: String, originalMessage: String): String {
         return try {
-            // 提取函數調用
+            // Extract function call
             val functionCall = extractFunctionCall(aiResponse)
             if (functionCall == null) {
-                Log.w(TAG, "⚠️ 無法解析函數調用，回退到原始回應")
+                Log.w(TAG, "⚠️ Cannot parse function call, fallback to original response")
                 return aiResponse
             }
             
-            Log.d(TAG, "🎯 執行函數: ${functionCall.name}")
-            Log.d(TAG, "📝 函數參數: ${functionCall.arguments}")
+            Log.d(TAG, "🎯 Executing function: ${functionCall.name}")
+            Log.d(TAG, "📝 Function parameters: ${functionCall.arguments}")
             
-            // 執行函數
-            val functionResult = WeatherFunctions.execute(functionCall.name, functionCall.arguments)
+            // 🆕 Call corresponding service based on function type
+            val functionResult = when {
+                functionCall.name.startsWith("get_") && functionCall.name.contains("weather") -> {
+                    WeatherFunctions.execute(functionCall.name, functionCall.arguments)
+                }
+                functionCall.name in listOf(
+                    "read_unread_messages", "read_recent_messages", "get_message_summary",
+                    "get_message_by_index", "get_latest_message"
+                ) -> {
+                    SMSFunctions.execute(functionCall.name, functionCall.arguments)
+                }
+                else -> {
+                    Log.w(TAG, "⚠️ Unknown function type: ${functionCall.name}")
+                    "Sorry, unrecognized function request."
+                }
+            }
             
-            Log.d(TAG, "✅ 函數執行完成")
+            Log.d(TAG, "✅ Function execution completed")
             
-            // 生成最終用戶友好的回應
-            generateFinalResponse(originalMessage, functionResult)
+            // Generate final user-friendly response
+            generateFinalResponse(originalMessage, functionResult, functionCall.name)
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 函數執行失敗: ${e.message}")
-            "抱歉，獲取天氣資訊時出現問題，請稍後再試。"
+            Log.e(TAG, "❌ Function execution failed: ${e.message}")
+            "Sorry, there was a problem processing your request, please try again later."
         }
     }
     
     /**
-     * 提取函數調用資訊
+     * Extract function call information
      */
     private fun extractFunctionCall(response: String): FunctionCall? {
         return try {
-            // 找到 FUNCTION_CALL: 後面的 JSON
+            // Find JSON after FUNCTION_CALL:
             val startIndex = response.indexOf("FUNCTION_CALL:")
             if (startIndex == -1) return null
             
             val jsonStart = response.indexOf("{", startIndex)
             if (jsonStart == -1) return null
             
-            // 🔧 修正：找到完整的 JSON 對象結尾
+            // Find complete JSON object end
             var braceCount = 0
             var jsonEnd = jsonStart
             
@@ -230,10 +322,10 @@ object WatsonAIEnhanced {
                 }
             }
             
-            if (braceCount != 0) return null // JSON 不完整
+            if (braceCount != 0) return null // JSON incomplete
             
             val jsonStr = response.substring(jsonStart, jsonEnd + 1)
-            Log.d(TAG, "🔍 提取的 JSON: $jsonStr")
+            Log.d(TAG, "🔍 Extracted JSON: $jsonStr")
             
             val jsonElement = json.parseToJsonElement(jsonStr)
             val jsonObject = jsonElement.jsonObject
@@ -244,46 +336,87 @@ object WatsonAIEnhanced {
             FunctionCall(name, arguments)
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 解析函數調用失敗: ${e.message}")
+            Log.e(TAG, "❌ Failed to parse function call: ${e.message}")
             null
         }
     }
     
     /**
-     * 生成最終用戶友好的回應
+     * 🆕 Generate final user-friendly response - supports multiple functions
      */
-    private suspend fun generateFinalResponse(originalMessage: String, functionResult: String): String {
+    private suspend fun generateFinalResponse(originalMessage: String, functionResult: String, functionName: String): String {
+        val functionType = when {
+            functionName.contains("weather") -> "weather"
+            functionName.contains("message") || functionName.contains("sms") -> "SMS"
+            else -> "function"
+        }
+        
         val finalPrompt = """
-用戶問了：$originalMessage
+User asked: $originalMessage
 
-我獲取到的天氣資訊是：
+The ${functionType} information I obtained is:
 $functionResult
 
-請基於這些資訊，給用戶一個自然、友好、詳細的回答。不要提到"函數"或"API"等技術詞彙，就像你親自查看了天氣一樣回答。
+Please provide a natural, friendly, and detailed response based on this information.
+Requirements:
+1. Don't mention technical terms like "function", "API", or "system"
+2. Use a warm and caring tone suitable for elderly people
+3. If it's weather information, care for the user like a friend
+4. If it's SMS information, help the user understand the content and provide suggestions
+5. Keep the response natural and smooth
 
-回答：""".trimIndent()
+Answer:""".trimIndent()
         
         return try {
             val finalResponse = callWatsonAI(finalPrompt)
-            Log.d(TAG, "🎉 生成最終回答完成")
+            Log.d(TAG, "🎉 Final answer generation completed")
             finalResponse
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 生成最終回答失敗: ${e.message}")
-            // 備用回應
-            "根據獲取到的天氣資訊：\n\n$functionResult\n\n希望這些資訊對您有幫助！"
+            Log.e(TAG, "❌ Failed to generate final answer: ${e.message}")
+            // Fallback response
+            when (functionType) {
+                "weather" -> "Based on the weather information obtained:\n\n$functionResult\n\nHope this information helps! Remember to adjust your clothing according to the weather."
+                "SMS" -> "Based on your SMS information:\n\n$functionResult\n\nIf you need me to read a specific message for you, please let me know."
+                else -> "Based on the information obtained:\n\n$functionResult\n\nHope this information helps!"
+            }
         }
     }
     
     /**
-     * 處理普通對話
+     * Process normal conversation - with context
      */
     private suspend fun handleNormalConversation(userMessage: String): String {
-        Log.d(TAG, "💬 處理普通對話")
-        return callWatsonAI("用戶: $userMessage\n助手:")
+        Log.d(TAG, "💬 Processing normal conversation")
+        val contextualPrompt = buildContextualPrompt(userMessage, isFunction = false)
+        return callWatsonAI(contextualPrompt)
     }
     
     /**
-     * 調用 Watson AI API - 基於你現有的工作代碼
+     * 🆕 Clear conversation history
+     */
+    fun clearConversationHistory() {
+        conversationHistory.clear()
+        Log.d(TAG, "🧹 Conversation history cleared")
+    }
+    
+    /**
+     * 🆕 Get conversation history summary
+     */
+    fun getConversationSummary(): String {
+        return if (conversationHistory.isEmpty()) {
+            "No conversation history available"
+        } else {
+            """
+            Conversation History Summary:
+            - Total conversation rounds: ${conversationHistory.count { it.role == "user" }}
+            - Last conversation time: ${java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(conversationHistory.last().timestamp))}
+            - History records: ${conversationHistory.size} entries
+            """.trimIndent()
+        }
+    }
+    
+    /**
+     * Call Watson AI API - based on your existing working code
      */
     private suspend fun callWatsonAI(prompt: String): String = withContext(Dispatchers.IO) {
         val token = getIAMToken()
@@ -298,8 +431,8 @@ $functionResult
             )
         )
         
-        Log.d(TAG, "📤 發送請求到 Watson AI")
-        Log.d(TAG, "📝 Prompt 長度: ${prompt.length}")
+        Log.d(TAG, "📤 Sending request to Watson AI")
+        Log.d(TAG, "📝 Prompt length: ${prompt.length}")
         
         val request = Request.Builder()
             .url(url)
@@ -311,76 +444,76 @@ $functionResult
         
         try {
             val response = client.newCall(request).execute()
-            Log.d(TAG, "📨 響應狀態: ${response.code}")
+            Log.d(TAG, "📨 Response status: ${response.code}")
             
             if (!response.isSuccessful) {
                 val errorText = response.body?.string() ?: ""
-                Log.e(TAG, "❌ API 錯誤: $errorText")
+                Log.e(TAG, "❌ API Error: $errorText")
                 throw IOException("Watson AI API Error: ${response.code} - $errorText")
             }
             
             val responseBody = response.body?.string()
-            Log.d(TAG, "✅ 收到回復: ${responseBody?.take(200)}...")
+            Log.d(TAG, "✅ Received response: ${responseBody?.take(200)}...")
             
             val data = json.decodeFromString<WatsonResponse>(responseBody!!)
             return@withContext parseResponse(data)
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Watson AI 調用失敗: ${e.message}")
+            Log.e(TAG, "❌ Watson AI call failed: ${e.message}")
             throw e
         }
     }
     
     /**
-     * 解析 Watson AI 響應 - 基於你現有的邏輯
+     * Parse Watson AI response - based on your existing logic
      */
     private fun parseResponse(data: WatsonResponse): String {
-        Log.d(TAG, "🔍 解析響應數據...")
+        Log.d(TAG, "🔍 Parsing response data...")
         
-        // 嘗試各種可能的響應格式
+        // Try various possible response formats
         data.choices?.firstOrNull()?.let { choice ->
             choice.message?.content?.let { 
-                Log.d(TAG, "✅ 解析成功 - 聊天格式")
+                Log.d(TAG, "✅ Parse successful - chat format")
                 return it.trim()
             }
             choice.text?.let { 
-                Log.d(TAG, "✅ 解析成功 - 文本格式")
+                Log.d(TAG, "✅ Parse successful - text format")
                 return it.trim()
             }
         }
         
         data.results?.firstOrNull()?.generatedText?.let { 
-            Log.d(TAG, "✅ 解析成功 - 生成格式")
+            Log.d(TAG, "✅ Parse successful - generation format")
             return it.trim()
         }
         
         data.generatedText?.let { 
-            Log.d(TAG, "✅ 解析成功 - 直接生成文本")
+            Log.d(TAG, "✅ Parse successful - direct generated text")
             return it.trim()
         }
         data.result?.let { 
-            Log.d(TAG, "✅ 解析成功 - 結果格式")
+            Log.d(TAG, "✅ Parse successful - result format")
             return it.trim()
         }
         data.response?.let { 
-            Log.d(TAG, "✅ 解析成功 - 響應格式")
+            Log.d(TAG, "✅ Parse successful - response format")
             return it.trim()
         }
         data.content?.let { 
-            Log.d(TAG, "✅ 解析成功 - 內容格式")
+            Log.d(TAG, "✅ Parse successful - content format")
             return it.trim()
         }
         data.text?.let { 
-            Log.d(TAG, "✅ 解析成功 - 文本格式")
+            Log.d(TAG, "✅ Parse successful - text format")
             return it.trim()
         }
         
-        Log.e(TAG, "❌ 無法解析響應格式")
-        throw IOException("無法解析 Watson AI 響應格式")
+        Log.e(TAG, "❌ Cannot parse response format")
+        throw IOException("Cannot parse Watson AI response format")
     }
     
     /**
-     * 獲取 IAM Token - 復用你現有的邏輯
+     * Get IAM Token - reuse your existing logic
      */
     private suspend fun getIAMToken(): String = withContext(Dispatchers.IO) {
         if (cachedToken != null && System.currentTimeMillis() < tokenExpirationTime - 300_000) {
@@ -419,57 +552,96 @@ $functionResult
     }
     
     /**
-     * 測試增強服務
+     * 🆕 Test all services
      */
     suspend fun testEnhancedService(): AIResult {
         return try {
-            Log.d(TAG, "🔧 測試增強服務連接...")
+            Log.d(TAG, "🔧 Testing enhanced service connection...")
             
-            val testMessage = "請告訴我現在的天氣如何？"
-            val result = getEnhancedAIResponse(testMessage)
+            val testResults = mutableListOf<String>()
             
-            if (result.success) {
-                Log.d(TAG, "✅ 增強服務測試成功")
-                AIResult(
-                    success = true,
-                    response = "增強服務測試成功！\n\n${result.response}",
-                    error = null
-                )
-            } else {
-                Log.e(TAG, "❌ 增強服務測試失敗: ${result.error}")
-                result
+            // Test weather function
+            try {
+                val weatherTest = WeatherFunctions.testWeatherService()
+                testResults.add("Weather Service: ✅ $weatherTest")
+            } catch (e: Exception) {
+                testResults.add("Weather Service: ❌ ${e.message}")
             }
             
+            // Test SMS function
+            try {
+                val smsTest = SMSFunctions.testSMSService()
+                testResults.add("SMS Service: ✅ $smsTest")
+            } catch (e: Exception) {
+                testResults.add("SMS Service: ❌ ${e.message}")
+            }
+            
+            // Test AI conversation
+            val testMessage = "Hello, please test the service"
+            val aiResult = getEnhancedAIResponse(testMessage)
+            
+            if (aiResult.success) {
+                testResults.add("AI Service: ✅ Connection normal")
+            } else {
+                testResults.add("AI Service: ❌ ${aiResult.error}")
+            }
+            
+            val overallResult = testResults.joinToString("\n")
+            
+            Log.d(TAG, "✅ Enhanced service testing completed")
+            AIResult(
+                success = true,
+                response = "🔧 Enhanced Service Test Results:\n\n$overallResult\n\n💬 Conversation History: ${conversationHistory.size} entries",
+                error = null
+            )
+            
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 增強服務測試異常: ${e.message}")
+            Log.e(TAG, "❌ Enhanced service testing exception: ${e.message}")
             AIResult(
                 success = false,
                 response = "",
-                error = "增強服務測試失敗: ${e.message}"
+                error = "Enhanced service testing failed: ${e.message}"
             )
         }
     }
     
     /**
-     * 獲取服務狀態
+     * 🆕 Get complete service status
      */
     fun getServiceStatus(): String {
         val baseStatus = when {
-            cachedToken != null && System.currentTimeMillis() < tokenExpirationTime -> "已連接"
-            cachedToken != null -> "令牌已過期"
-            else -> "未連接"
+            cachedToken != null && System.currentTimeMillis() < tokenExpirationTime -> "Connected"
+            cachedToken != null -> "Token expired"
+            else -> "Not connected"
         }
         
         val weatherStatus = WeatherFunctions.getServiceStatus()
+        val smsStatus = SMSFunctions.getServiceStatus()
+        val conversationStatus = getConversationSummary()
         
         return """
-            Watson AI Enhanced 狀態: $baseStatus (Prompt Engineering 模式)
-            $weatherStatus
+            🤖 Watson AI Enhanced Status: $baseStatus
+            
+            🌤️ $weatherStatus
+            
+            📱 $smsStatus
+            
+            💬 $conversationStatus
         """.trimIndent()
     }
     
     /**
-     * 數據類定義 - 復用你現有的結構
+     * 🆕 Data class definitions - context management
+     */
+    @Serializable
+    private data class ConversationMessage(
+        val content: String,
+        val role: String,
+        val timestamp: Long
+    )
+    
+    /**
+     * Data class definitions - reuse your existing structure
      */
     @Serializable
     private data class WatsonAIConfig(
@@ -525,7 +697,7 @@ $functionResult
     )
     
     /**
-     * AI 回復結果類
+     * AI response result class
      */
     data class AIResult(
         val success: Boolean,

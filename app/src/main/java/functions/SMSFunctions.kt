@@ -14,7 +14,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * 簡訊資料類
+ * SMS data class
  */
 @Serializable
 data class SMSMessage(
@@ -26,7 +26,7 @@ data class SMSMessage(
 )
 
 /**
- * 簡訊讀取器
+ * SMS Reader
  */
 class SMSReader(private val context: Context) {
     
@@ -35,7 +35,7 @@ class SMSReader(private val context: Context) {
     }
     
     /**
-     * 檢查權限
+     * Check permissions
      */
     fun hasPermissions(): Boolean {
         return ContextCompat.checkSelfPermission(
@@ -45,11 +45,11 @@ class SMSReader(private val context: Context) {
     }
     
     /**
-     * 獲取未讀簡訊
+     * Get unread messages
      */
     fun getUnreadMessages(): List<SMSMessage> {
         if (!hasPermissions()) {
-            Log.w(TAG, "⚠️ 沒有簡訊讀取權限")
+            Log.w(TAG, "⚠️ No SMS read permission")
             return emptyList()
         }
         
@@ -57,7 +57,7 @@ class SMSReader(private val context: Context) {
         
         try {
             val cursor = context.contentResolver.query(
-                Telephony.Sms.INBOX,
+                Telephony.Sms.Inbox.CONTENT_URI, // ✅ 修正：使用 CONTENT_URI
                 arrayOf(
                     Telephony.Sms._ID,
                     Telephony.Sms.ADDRESS,
@@ -66,7 +66,7 @@ class SMSReader(private val context: Context) {
                     Telephony.Sms.READ
                 ),
                 "${Telephony.Sms.READ} = ?",
-                arrayOf("0"), // 0 = 未讀
+                arrayOf("0"), // 0 = unread
                 "${Telephony.Sms.DATE} DESC"
             )
             
@@ -82,21 +82,21 @@ class SMSReader(private val context: Context) {
                 }
             }
             
-            Log.d(TAG, "✅ 成功讀取 ${messages.size} 則未讀簡訊")
+            Log.d(TAG, "✅ Successfully read ${messages.size} unread messages")
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 讀取未讀簡訊失敗: ${e.message}")
+            Log.e(TAG, "❌ Failed to read unread messages: ${e.message}")
         }
         
         return messages
     }
-    
+
     /**
      * 獲取最近簡訊
      */
     fun getRecentMessages(limit: Int = 10): List<SMSMessage> {
         if (!hasPermissions()) {
-            Log.w(TAG, "⚠️ 沒有簡訊讀取權限")
+            Log.w(TAG, "⚠️ No SMS read permission")
             return emptyList()
         }
         
@@ -104,7 +104,7 @@ class SMSReader(private val context: Context) {
         
         try {
             val cursor = context.contentResolver.query(
-                Telephony.Sms.INBOX,
+                Telephony.Sms.Inbox.CONTENT_URI, // ✅ 修正：使用 CONTENT_URI
                 arrayOf(
                     Telephony.Sms._ID,
                     Telephony.Sms.ADDRESS,
@@ -129,18 +129,18 @@ class SMSReader(private val context: Context) {
                 }
             }
             
-            Log.d(TAG, "✅ 成功讀取 ${messages.size} 則最近簡訊")
+            Log.d(TAG, "✅ Successfully read ${messages.size} recent messages")
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 讀取最近簡訊失敗: ${e.message}")
+            Log.e(TAG, "❌ Failed to read recent messages: ${e.message}")
         }
         
         return messages
     }
-}
+} // ← ✅ 這裡缺少 SMSReader 類別的結尾括號
 
 /**
- * 簡訊函數管理器 - 處理所有簡訊相關的 Function Calling
+ * SMS Function Manager - handles all SMS-related Function Calling
  */
 object SMSFunctions {
     
@@ -148,19 +148,19 @@ object SMSFunctions {
     private lateinit var smsReader: SMSReader
     
     /**
-     * 初始化簡訊服務
+     * Initialize SMS service
      */
     fun initialize(context: Context) {
         smsReader = SMSReader(context)
-        Log.d(TAG, "✅ 簡訊函數管理器已初始化")
+        Log.d(TAG, "✅ SMS function manager initialized")
     }
     
     /**
-     * 執行簡訊函數
+     * Execute SMS function
      */
     suspend fun execute(functionName: String, arguments: String): String {
-        Log.d(TAG, "🔧 執行簡訊函數: $functionName")
-        Log.d(TAG, "📝 參數: $arguments")
+        Log.d(TAG, "🔧 Executing SMS function: $functionName")
+        Log.d(TAG, "📝 Parameters: $arguments")
         
         return try {
             when (functionName) {
@@ -170,35 +170,35 @@ object SMSFunctions {
                 "get_message_by_index" -> executeGetMessageByIndex(arguments)
                 "get_latest_message" -> executeGetLatestMessage()
                 else -> {
-                    Log.w(TAG, "⚠️ 未知的簡訊函數: $functionName")
-                    "錯誤：未知的簡訊函數 $functionName"
+                    Log.w(TAG, "⚠️ Unknown SMS function: $functionName")
+                    "Error: Unknown SMS function $functionName"
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 簡訊函數執行失敗: ${e.message}")
-            "錯誤：簡訊功能執行失敗 - ${e.message}"
+            Log.e(TAG, "❌ SMS function execution failed: ${e.message}")
+            "Error: SMS function execution failed - ${e.message}"
         }
     }
     
     /**
-     * 執行讀取未讀簡訊
+     * Execute read unread messages
      */
     private suspend fun executeReadUnreadMessages(): String {
-        Log.d(TAG, "📱 執行讀取未讀簡訊")
+        Log.d(TAG, "📱 Executing read unread messages")
         
         if (!smsReader.hasPermissions()) {
-            return "抱歉，我需要簡訊讀取權限才能幫您查看簡訊。請到設定中開啟權限。"
+            return "Sorry, I need SMS read permission to help you view messages. Please enable permission in settings."
         }
         
         val unreadMessages = smsReader.getUnreadMessages()
         
         if (unreadMessages.isEmpty()) {
-            Log.d(TAG, "📭 沒有未讀簡訊")
-            return "您目前沒有未讀的簡訊，所有簡訊都已經讀過了。😊"
+            Log.d(TAG, "📭 No unread messages")
+            return "You currently have no unread messages, all messages have been read. 😊"
         }
         
         val result = StringBuilder()
-        result.append("📱 您有 ${unreadMessages.size} 則未讀簡訊：\n\n")
+        result.append("📱 You have ${unreadMessages.size} unread messages:\n\n")
         
         unreadMessages.take(5).forEachIndexed { index, message ->
             val timeFormatted = SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault())
@@ -208,7 +208,7 @@ object SMSFunctions {
             result.append("${formatPhoneNumber(message.sender)} ")
             result.append("($timeFormatted)\n")
             
-            // 限制每則簡訊內容顯示長度
+            // Limit the display length of each message content
             val displayContent = if (message.content.length > 50) {
                 "${message.content.take(50)}..."
             } else {
@@ -218,31 +218,31 @@ object SMSFunctions {
         }
         
         if (unreadMessages.size > 5) {
-            result.append("...還有 ${unreadMessages.size - 5} 則未讀簡訊\n\n")
+            result.append("...and ${unreadMessages.size - 5} more unread messages\n\n")
         }
         
-        result.append("💡 要我為您朗讀某則簡訊嗎？")
+        result.append("💡 Would you like me to read a specific message for you?")
         
-        Log.d(TAG, "✅ 未讀簡訊讀取完成，共 ${unreadMessages.size} 則")
+        Log.d(TAG, "✅ Unread messages reading completed, total ${unreadMessages.size} messages")
         return result.toString()
     }
     
     /**
-     * 執行讀取最近簡訊
+     * Execute read recent messages
      */
     private suspend fun executeReadRecentMessages(arguments: String): String {
-        Log.d(TAG, "📱 執行讀取最近簡訊")
+        Log.d(TAG, "📱 Executing read recent messages")
         
         if (!smsReader.hasPermissions()) {
-            return "抱歉，我需要簡訊讀取權限才能幫您查看簡訊。"
+            return "Sorry, I need SMS read permission to help you view messages."
         }
         
-        // 解析參數
+        // Parse parameters
         val limit = try {
             if (arguments.isBlank()) {
-                5 // 預設顯示5則
+                5 // Default display 5 messages
             } else {
-                // 嘗試解析 JSON 或直接解析數字
+                // Try to parse JSON or parse number directly
                 if (arguments.trim().startsWith("{")) {
                     val jsonArgs = Json.parseToJsonElement(arguments).jsonObject
                     jsonArgs["limit"]?.jsonPrimitive?.int ?: 5
@@ -251,18 +251,18 @@ object SMSFunctions {
                 }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "參數解析失敗，使用預設值: ${e.message}")
+            Log.w(TAG, "Parameter parsing failed, using default value: ${e.message}")
             5
         }
         
         val recentMessages = smsReader.getRecentMessages(limit.coerceIn(1, 10))
         
         if (recentMessages.isEmpty()) {
-            return "沒有找到任何簡訊記錄。"
+            return "No SMS records found."
         }
         
         val result = StringBuilder()
-        result.append("📱 最近的 ${recentMessages.size} 則簡訊：\n\n")
+        result.append("📱 Recent ${recentMessages.size} messages:\n\n")
         
         recentMessages.forEachIndexed { index, message ->
             val timeFormatted = SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault())
@@ -274,7 +274,7 @@ object SMSFunctions {
             result.append("${formatPhoneNumber(message.sender)}$readStatus ")
             result.append("($timeFormatted)\n")
             
-            // 限制內容顯示長度
+            // Limit content display length
             val displayContent = if (message.content.length > 50) {
                 "${message.content.take(50)}..."
             } else {
@@ -283,78 +283,78 @@ object SMSFunctions {
             result.append("   📝 $displayContent\n\n")
         }
         
-        Log.d(TAG, "✅ 最近簡訊讀取完成，共 ${recentMessages.size} 則")
+        Log.d(TAG, "✅ Recent messages reading completed, total ${recentMessages.size} messages")
         return result.toString()
     }
     
     /**
-     * 執行簡訊摘要
+     * Execute message summary
      */
     private suspend fun executeGetMessageSummary(): String {
-        Log.d(TAG, "📊 執行簡訊摘要")
+        Log.d(TAG, "📊 Executing message summary")
         
         if (!smsReader.hasPermissions()) {
-            return "抱歉，我需要簡訊讀取權限才能幫您查看簡訊摘要。"
+            return "Sorry, I need SMS read permission to help you view message summary."
         }
         
         val unreadMessages = smsReader.getUnreadMessages()
         val recentMessages = smsReader.getRecentMessages(10)
         
         val result = StringBuilder()
-        result.append("📱 簡訊摘要報告：\n\n")
+        result.append("📱 SMS Summary Report:\n\n")
         
-        // 未讀簡訊統計
+        // Unread message statistics
         if (unreadMessages.isNotEmpty()) {
-            result.append("📩 未讀簡訊：${unreadMessages.size} 則\n")
+            result.append("📩 Unread messages: ${unreadMessages.size} messages\n")
             
-            // 顯示最新的未讀簡訊發送者
+            // Display the latest unread message sender
             val latestUnread = unreadMessages.first()
-            val timeFormatted = SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault())
+            val timeFormatted = SimpleDateFormat("MM/dd HH:mm", Locale.getDefault())
                 .format(Date(latestUnread.timestamp))
-            result.append("   最新：${formatPhoneNumber(latestUnread.sender)} ($timeFormatted)\n\n")
+            result.append("   Latest: ${formatPhoneNumber(latestUnread.sender)} ($timeFormatted)\n\n")
         } else {
-            result.append("✅ 沒有未讀簡訊\n\n")
+            result.append("✅ No unread messages\n\n")
         }
         
-        // 最近活動統計
-        result.append("📊 最近 24 小時：\n")
+        // Recent activity statistics
+        result.append("📊 Last 24 hours:\n")
         val yesterday = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
         val recentCount = recentMessages.count { it.timestamp > yesterday }
-        result.append("   收到 $recentCount 則簡訊\n\n")
+        result.append("   Received $recentCount messages\n\n")
         
-        // 發送者統計（最近10則）
+        // Sender statistics (recent 10 messages)
         if (recentMessages.isNotEmpty()) {
             val senderGroups = recentMessages.groupBy { it.sender }
             val topSenders = senderGroups.entries
                 .sortedByDescending { it.value.size }
                 .take(3)
             
-            result.append("📈 最活躍聯絡人：\n")
+            result.append("📈 Most active contacts:\n")
             topSenders.forEach { (sender, messages) ->
-                result.append("   ${formatPhoneNumber(sender)}：${messages.size} 則\n")
+                result.append("   ${formatPhoneNumber(sender)}: ${messages.size} messages\n")
             }
             result.append("\n")
         }
         
-        // 建議
+        // Suggestions
         if (unreadMessages.isNotEmpty()) {
-            result.append("💡 建議：您有 ${unreadMessages.size} 則未讀簡訊，要我讀給您聽嗎？")
+            result.append("💡 Suggestion: You have ${unreadMessages.size} unread messages, would you like me to read them for you?")
         } else {
-            result.append("😊 所有簡訊都已處理完畢！")
+            result.append("😊 All messages have been processed!")
         }
         
-        Log.d(TAG, "✅ 簡訊摘要完成")
+        Log.d(TAG, "✅ Message summary completed")
         return result.toString()
     }
     
     /**
-     * 根據索引獲取特定簡訊
+     * Get specific message by index
      */
     private suspend fun executeGetMessageByIndex(arguments: String): String {
-        Log.d(TAG, "📱 根據索引獲取簡訊")
+        Log.d(TAG, "📱 Getting message by index")
         
         if (!smsReader.hasPermissions()) {
-            return "抱歉，我需要簡訊讀取權限。"
+            return "Sorry, I need SMS read permission."
         }
         
         val index = try {
@@ -369,175 +369,175 @@ object SMSFunctions {
         }
         
         if (index == null || index < 1) {
-            return "請提供正確的簡訊編號（從 1 開始）。例如：「第 1 則簡訊」"
+            return "Please provide the correct message number (starting from 1). For example: \"Message number 1\""
         }
         
         val unreadMessages = smsReader.getUnreadMessages()
         
         if (unreadMessages.isEmpty()) {
-            return "您目前沒有未讀簡訊。"
+            return "You currently have no unread messages."
         }
         
         if (index > unreadMessages.size) {
-            return "簡訊編號超出範圍，您只有 ${unreadMessages.size} 則未讀簡訊。"
+            return "Message number out of range, you only have ${unreadMessages.size} unread messages."
         }
         
         val message = unreadMessages[index - 1]
-        val timeFormatted = SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault())
+        val timeFormatted = SimpleDateFormat("MM/dd HH:mm", Locale.getDefault())
             .format(Date(message.timestamp))
         
         val result = StringBuilder()
-        result.append("📱 第 $index 則簡訊詳細內容：\n\n")
-        result.append("👤 發送者：${formatPhoneNumber(message.sender)}\n")
-        result.append("🕐 時間：$timeFormatted\n")
-        result.append("📝 內容：\n${message.content}\n\n")
-        result.append("💬 要我為您朗讀這則簡訊嗎？")
+        result.append("📱 Message $index detailed content:\n\n")
+        result.append("👤 Sender: ${formatPhoneNumber(message.sender)}\n")
+        result.append("🕐 Time: $timeFormatted\n")
+        result.append("📝 Content:\n${message.content}\n\n")
+        result.append("💬 Would you like me to read this message for you?")
         
         return result.toString()
     }
     
     /**
-     * 獲取最新簡訊
+     * Get latest message
      */
     private suspend fun executeGetLatestMessage(): String {
-        Log.d(TAG, "📱 獲取最新簡訊")
+        Log.d(TAG, "📱 Getting latest message")
         
         if (!smsReader.hasPermissions()) {
-            return "抱歉，我需要簡訊讀取權限。"
+            return "Sorry, I need SMS read permission."
         }
         
         val recentMessages = smsReader.getRecentMessages(1)
         
         if (recentMessages.isEmpty()) {
-            return "沒有找到任何簡訊。"
+            return "No messages found."
         }
         
         val latestMessage = recentMessages.first()
-        val timeFormatted = SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault())
+        val timeFormatted = SimpleDateFormat("MM/dd HH:mm", Locale.getDefault())
             .format(Date(latestMessage.timestamp))
         
-        val readStatus = if (latestMessage.isRead) "已讀" else "未讀"
+        val readStatus = if (latestMessage.isRead) "Read" else "Unread"
         
         val result = StringBuilder()
-        result.append("📱 最新簡訊（$readStatus）：\n\n")
-        result.append("👤 發送者：${formatPhoneNumber(latestMessage.sender)}\n")
-        result.append("🕐 時間：$timeFormatted\n")
-        result.append("📝 內容：\n${latestMessage.content}")
+        result.append("📱 Latest message ($readStatus):\n\n")
+        result.append("👤 Sender: ${formatPhoneNumber(latestMessage.sender)}\n")
+        result.append("🕐 Time: $timeFormatted\n")
+        result.append("📝 Content:\n${latestMessage.content}")
         
         return result.toString()
     }
     
     /**
-     * 輔助函數：格式化電話號碼
+     * Helper function: Format phone number
      */
     private fun formatPhoneNumber(phoneNumber: String): String {
         return when {
-            // 台灣國際格式：+886
+            // Taiwan international format: +886
             phoneNumber.startsWith("+886") -> {
                 val localNumber = phoneNumber.substring(4)
                 if (localNumber.length == 9 && localNumber.startsWith("9")) {
-                    // 手機號碼
+                    // Mobile number
                     "0${localNumber.substring(0, 3)}-${localNumber.substring(3, 6)}-${localNumber.substring(6)}"
                 } else {
                     phoneNumber
                 }
             }
-            // 台灣手機號碼：09開頭
+            // Taiwan mobile number: starts with 09
             phoneNumber.length == 10 && phoneNumber.startsWith("09") -> {
                 "${phoneNumber.substring(0, 4)}-${phoneNumber.substring(4, 7)}-${phoneNumber.substring(7)}"
             }
-            // 台灣市話：0開頭但非09
+            // Taiwan landline: starts with 0 but not 09
             phoneNumber.length >= 8 && phoneNumber.startsWith("0") && !phoneNumber.startsWith("09") -> {
                 if (phoneNumber.length == 9) {
-                    // 可能是 02-xxxx-xxxx 格式
+                    // Could be 02-xxxx-xxxx format
                     "${phoneNumber.substring(0, 2)}-${phoneNumber.substring(2, 6)}-${phoneNumber.substring(6)}"
                 } else {
                     phoneNumber
                 }
             }
-            // 長號碼部分隱藏（保護隱私）
+            // Long number partially hidden (privacy protection)
             phoneNumber.length > 8 -> {
                 "${phoneNumber.substring(0, 4)}****${phoneNumber.takeLast(3)}"
             }
-            // 短號碼或特殊號碼
+            // Short number or special number
             phoneNumber.length <= 5 -> {
-                phoneNumber // 可能是簡碼，直接顯示
+                phoneNumber // Could be short code, display directly
             }
             else -> phoneNumber
         }
     }
     
     /**
-     * 檢查服務狀態
+     * Check service status
      */
     fun getServiceStatus(): String {
         return buildString {
-            append("📱 簡訊服務狀態：\n")
+            append("📱 SMS Service Status:\n")
             if (::smsReader.isInitialized) {
                 if (smsReader.hasPermissions()) {
-                    append("✅ 權限已授權\n")
+                    append("✅ Permission granted\n")
                     try {
                         val unreadCount = smsReader.getUnreadMessages().size
-                        append("📩 未讀簡訊：$unreadCount 則\n")
+                        append("📩 Unread messages: $unreadCount messages\n")
                         val recentCount = smsReader.getRecentMessages(10).size
-                        append("📊 最近簡訊：$recentCount 則")
+                        append("📊 Recent messages: $recentCount messages")
                     } catch (e: Exception) {
-                        append("⚠️ 讀取簡訊時發生錯誤: ${e.message}")
+                        append("⚠️ Error reading messages: ${e.message}")
                     }
                 } else {
-                    append("❌ 缺少簡訊讀取權限")
+                    append("❌ Missing SMS read permission")
                 }
             } else {
-                append("❌ 服務未初始化")
+                append("❌ Service not initialized")
             }
         }
     }
     
     /**
-     * 測試簡訊服務連接
+     * Test SMS service connection
      */
     suspend fun testSMSService(): String {
         return try {
-            Log.d(TAG, "🔧 測試簡訊服務")
+            Log.d(TAG, "🔧 Testing SMS service")
             
             if (!::smsReader.isInitialized) {
-                return "❌ 簡訊服務未初始化"
+                return "❌ SMS service not initialized"
             }
             
             if (!smsReader.hasPermissions()) {
-                return "❌ 缺少簡訊讀取權限，請到設定中開啟權限"
+                return "❌ Missing SMS read permission, please enable permission in settings"
             }
             
-            val testResult = StringBuilder("✅ 簡訊服務測試成功！\n\n")
+            val testResult = StringBuilder("✅ SMS service test successful!\n\n")
             
-            // 測試讀取功能
+            // Test reading functionality
             val unreadMessages = smsReader.getUnreadMessages()
-            testResult.append("📩 未讀簡訊：${unreadMessages.size} 則\n")
+            testResult.append("📩 Unread messages: ${unreadMessages.size} messages\n")
             
             val recentMessages = smsReader.getRecentMessages(5)
-            testResult.append("📊 最近簡訊：${recentMessages.size} 則\n")
+            testResult.append("📊 Recent messages: ${recentMessages.size} messages\n")
             
             if (recentMessages.isNotEmpty()) {
                 val latestMessage = recentMessages.first()
                 val timeFormatted = SimpleDateFormat("HH:mm", Locale.getDefault())
                     .format(Date(latestMessage.timestamp))
-                testResult.append("📱 最新簡訊：${formatPhoneNumber(latestMessage.sender)} ($timeFormatted)\n")
+                testResult.append("📱 Latest message: ${formatPhoneNumber(latestMessage.sender)} ($timeFormatted)\n")
             }
             
-            testResult.append("\n🎉 簡訊功能正常運作，可以開始使用！")
+            testResult.append("\n🎉 SMS functionality working normally, ready to use!")
             
             testResult.toString()
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 簡訊服務測試失敗: ${e.message}")
-            "❌ 簡訊服務測試失敗：${e.message}"
+            Log.e(TAG, "❌ SMS service test failed: ${e.message}")
+            "❌ SMS service test failed: ${e.message}"
         }
     }
     
     /**
-     * 清理資源
+     * Cleanup resources
      */
     fun cleanup() {
-        Log.d(TAG, "🧹 簡訊服務資源已清理")
+        Log.d(TAG, "🧹 SMS service resources cleaned up")
     }
 }

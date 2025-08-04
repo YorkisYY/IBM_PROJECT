@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
 
 /**
- * 天氣函數管理器 - 處理所有天氣相關的 Function Calling
+ * Weather Function Manager - handles all weather-related Function Calling
  */
 object WeatherFunctions {
     
@@ -25,154 +25,154 @@ object WeatherFunctions {
     private lateinit var weatherService: WeatherService
     
     /**
-     * 初始化天氣服務
+     * Initialize weather service
      */
     fun initialize(context: Context) {
         weatherService = WeatherService(context)
-        Log.d(TAG, "✅ 天氣函數管理器已初始化")
+        Log.d(TAG, "✅ Weather function manager initialized")
     }
     
     /**
-     * 執行天氣函數
+     * Execute weather function
      */
     suspend fun execute(functionName: String, arguments: String): String {
-        Log.d(TAG, "🔧 執行天氣函數: $functionName")
-        Log.d(TAG, "📝 參數: $arguments")
+        Log.d(TAG, "🔧 Executing weather function: $functionName")
+        Log.d(TAG, "📝 Parameters: $arguments")
         
         return try {
             when (functionName) {
                 "get_current_weather" -> executeCurrentWeather()
                 "get_weather_by_city" -> executeCityWeather(arguments)
                 else -> {
-                    Log.w(TAG, "⚠️ 未知的天氣函數: $functionName")
-                    "錯誤：未知的天氣函數 $functionName"
+                    Log.w(TAG, "⚠️ Unknown weather function: $functionName")
+                    "Error: Unknown weather function $functionName"
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 天氣函數執行失敗: ${e.message}")
-            "錯誤：天氣資料獲取失敗 - ${e.message}"
+            Log.e(TAG, "❌ Weather function execution failed: ${e.message}")
+            "Error: Weather data retrieval failed - ${e.message}"
         }
     }
     
     /**
-     * 執行當前位置天氣查詢
+     * Execute current location weather query
      */
     private suspend fun executeCurrentWeather(): String {
-        Log.d(TAG, "🌍 執行當前位置天氣查詢")
+        Log.d(TAG, "🌍 Executing current location weather query")
         
         val weatherData = weatherService.getCurrentLocationWeather()
         
         val result = """
-            當前位置天氣資訊：
-            地點：${weatherData.city}, ${weatherData.country}
-            天氣：${weatherData.condition}
-            溫度：${weatherData.temperature}°C
-            濕度：${weatherData.humidity}%
-            風速：${String.format("%.1f", weatherData.windSpeed)} m/s
-            描述：${weatherData.description}
+            Current location weather information:
+            Location: ${weatherData.city}, ${weatherData.country}
+            Weather: ${weatherData.condition}
+            Temperature: ${weatherData.temperature}°C
+            Humidity: ${weatherData.humidity}%
+            Wind Speed: ${String.format("%.1f", weatherData.windSpeed)} m/s
+            Description: ${weatherData.description}
         """.trimIndent()
         
-        Log.d(TAG, "✅ 當前位置天氣查詢完成")
+        Log.d(TAG, "✅ Current location weather query completed")
         return result
     }
     
     /**
-     * 執行城市天氣查詢
+     * Execute city weather query
      */
     private suspend fun executeCityWeather(arguments: String): String {
-        Log.d(TAG, "🏙️ 執行城市天氣查詢")
+        Log.d(TAG, "🏙️ Executing city weather query")
         
-        // 解析參數
+        // Parse parameters
         val cityName = try {
             if (arguments.isBlank()) {
-                throw IllegalArgumentException("城市名稱不能為空")
+                throw IllegalArgumentException("City name cannot be empty")
             }
             
-            // 嘗試解析 JSON 格式的參數
+            // Try to parse JSON format parameters
             if (arguments.trim().startsWith("{")) {
                 val jsonArgs = Json.parseToJsonElement(arguments).jsonObject
                 jsonArgs["city"]?.jsonPrimitive?.content
-                    ?: throw IllegalArgumentException("參數中未找到 city 欄位")
+                    ?: throw IllegalArgumentException("City field not found in parameters")
             } else {
-                // 如果不是 JSON，直接當作城市名稱
+                // If not JSON, treat as city name directly
                 arguments.trim()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 參數解析失敗: ${e.message}")
-            return "錯誤：無法解析城市名稱參數 - ${e.message}"
+            Log.e(TAG, "❌ Parameter parsing failed: ${e.message}")
+            return "Error: Cannot parse city name parameter - ${e.message}"
         }
         
-        Log.d(TAG, "🎯 查詢城市: $cityName")
+        Log.d(TAG, "🎯 Querying city: $cityName")
         
         val weatherData = weatherService.getWeatherByCity(cityName)
         
         val result = """
-            ${weatherData.city}天氣資訊：
-            地點：${weatherData.city}, ${weatherData.country}
-            天氣：${weatherData.condition}
-            溫度：${weatherData.temperature}°C
-            濕度：${weatherData.humidity}%
-            風速：${String.format("%.1f", weatherData.windSpeed)} m/s
-            描述：${weatherData.description}
+            ${weatherData.city} weather information:
+            Location: ${weatherData.city}, ${weatherData.country}
+            Weather: ${weatherData.condition}
+            Temperature: ${weatherData.temperature}°C
+            Humidity: ${weatherData.humidity}%
+            Wind Speed: ${String.format("%.1f", weatherData.windSpeed)} m/s
+            Description: ${weatherData.description}
         """.trimIndent()
         
-        Log.d(TAG, "✅ 城市天氣查詢完成")
+        Log.d(TAG, "✅ City weather query completed")
         return result
     }
     
     /**
-     * 測試天氣服務連接
+     * Test weather service connection
      */
     suspend fun testWeatherService(): String {
         return try {
-            Log.d(TAG, "🔧 測試天氣服務連接")
+            Log.d(TAG, "🔧 Testing weather service connection")
             
             val mockWeather = weatherService.getMockWeather()
             
             """
-                天氣服務測試成功！
-                模擬數據：${mockWeather.city}, ${mockWeather.condition}, ${mockWeather.temperature}°C
-                緩存狀態：${weatherService.getCacheStatus()}
+                Weather service test successful!
+                Mock data: ${mockWeather.city}, ${mockWeather.condition}, ${mockWeather.temperature}°C
+                Cache status: ${weatherService.getCacheStatus()}
             """.trimIndent()
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 天氣服務測試失敗: ${e.message}")
-            "天氣服務測試失敗：${e.message}"
+            Log.e(TAG, "❌ Weather service test failed: ${e.message}")
+            "Weather service test failed: ${e.message}"
         }
     }
     
     /**
-     * 獲取天氣服務狀態
+     * Get weather service status
      */
     fun getServiceStatus(): String {
         return if (::weatherService.isInitialized) {
-            "天氣服務已就緒\n${weatherService.getCacheStatus()}"
+            "Weather service ready\n${weatherService.getCacheStatus()}"
         } else {
-            "天氣服務未初始化"
+            "Weather service not initialized"
         }
     }
     
     /**
-     * 清理天氣緩存
+     * Clear weather cache
      */
     fun clearCache() {
         if (::weatherService.isInitialized) {
             weatherService.clearCache()
-            Log.d(TAG, "🧹 天氣緩存已清理")
+            Log.d(TAG, "🧹 Weather cache cleared")
         }
     }
 }
 
 /**
- * 天氣服務 - 使用 wttr.in API
- * 轉換自 TypeScript 版本，使用相同的 API 端點
+ * Weather Service - using wttr.in API
+ * Converted from TypeScript version, using the same API endpoints
  */
 class WeatherService(private val context: Context) {
     
     companion object {
         private const val TAG = "WeatherService"
         private const val WTTR_BASE_URL = "https://wttr.in"
-        private const val CACHE_EXPIRY_MS = 10 * 60 * 1000L // 10分鐘快取
+        private const val CACHE_EXPIRY_MS = 10 * 60 * 1000L // 10 minutes cache
     }
     
     private val client = OkHttpClient.Builder()
@@ -185,59 +185,59 @@ class WeatherService(private val context: Context) {
         isLenient = true
     }
     
-    // 快取系統
+    // Cache system
     private val weatherCache = ConcurrentHashMap<String, CachedWeatherData>()
     
     /**
-     * 獲取當前位置的天氣
+     * Get current location weather
      */
     suspend fun getCurrentLocationWeather(): WeatherData = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "🌍 開始獲取當前位置天氣")
+            Log.d(TAG, "🌍 Starting to get current location weather")
             
-            // 檢查位置權限
+            // Check location permission
             if (!hasLocationPermission()) {
-                Log.w(TAG, "⚠️ 位置權限未授予，使用IP定位")
-                // 直接使用IP定位作為備用方案
+                Log.w(TAG, "⚠️ Location permission not granted, using IP location")
+                // Use IP location as fallback
                 return@withContext getWeatherByIP()
             }
             
-            // 獲取當前位置
+            // Get current location
             val location = getCurrentLocation()
             if (location != null) {
-                Log.d(TAG, "📍 位置獲取成功: ${location.latitude}, ${location.longitude}")
+                Log.d(TAG, "📍 Location obtained successfully: ${location.latitude}, ${location.longitude}")
                 return@withContext getWeatherByCoordinates(location.latitude, location.longitude)
             } else {
-                Log.w(TAG, "⚠️ 無法獲取位置，使用IP定位")
-                // 使用IP定位作為備用方案
+                Log.w(TAG, "⚠️ Cannot get location, using IP location")
+                // Use IP location as fallback
                 return@withContext getWeatherByIP()
             }
             
         } catch (e: SecurityException) {
-            Log.e(TAG, "❌ 權限錯誤，使用IP定位: ${e.message}")
+            Log.e(TAG, "❌ Permission error, using IP location: ${e.message}")
             return@withContext getWeatherByIP()
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 獲取當前位置天氣失敗: ${e.message}")
-            throw Exception("獲取當前位置天氣失敗: ${e.message}")
+            Log.e(TAG, "❌ Failed to get current location weather: ${e.message}")
+            throw Exception("Failed to get current location weather: ${e.message}")
         }
     }
     
     /**
-     * 根據座標獲取天氣 - 對應 TypeScript 的 getWeatherByCoordinates
+     * Get weather by coordinates - corresponds to TypeScript getWeatherByCoordinates
      */
     suspend fun getWeatherByCoordinates(lat: Double, lon: Double): WeatherData = withContext(Dispatchers.IO) {
         val cacheKey = "coords_${lat}_${lon}"
         
-        // 檢查快取
+        // Check cache
         weatherCache[cacheKey]?.let { cached ->
             if (System.currentTimeMillis() - cached.timestamp < CACHE_EXPIRY_MS) {
-                Log.d(TAG, "📦 使用快取的座標天氣資料")
+                Log.d(TAG, "📦 Using cached coordinate weather data")
                 return@withContext cached.data
             }
         }
         
         try {
-            Log.d(TAG, "🌐 從 wttr.in 獲取座標天氣: $lat, $lon")
+            Log.d(TAG, "🌐 Getting coordinate weather from wttr.in: $lat, $lon")
             
             val url = "$WTTR_BASE_URL/$lat,$lon?format=j1"
             val request = Request.Builder()
@@ -248,44 +248,44 @@ class WeatherService(private val context: Context) {
             val response = client.newCall(request).execute()
             
             if (!response.isSuccessful) {
-                throw IOException("API 請求失敗: ${response.code}")
+                throw IOException("API request failed: ${response.code}")
             }
             
             val responseBody = response.body?.string()
-                ?: throw IOException("回應內容為空")
+                ?: throw IOException("Response content is empty")
             
-            Log.d(TAG, "✅ API 回應成功，解析資料中...")
+            Log.d(TAG, "✅ API response successful, parsing data...")
             
             val weatherData = parseWttrResponse(responseBody)
             
-            // 快取結果
+            // Cache result
             weatherCache[cacheKey] = CachedWeatherData(weatherData, System.currentTimeMillis())
             
-            Log.d(TAG, "🎉 座標天氣獲取成功: ${weatherData.city}")
+            Log.d(TAG, "🎉 Coordinate weather obtained successfully: ${weatherData.city}")
             return@withContext weatherData
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 座標天氣獲取失敗: ${e.message}")
-            throw Exception("座標天氣獲取失敗: ${e.message}")
+            Log.e(TAG, "❌ Failed to get coordinate weather: ${e.message}")
+            throw Exception("Failed to get coordinate weather: ${e.message}")
         }
     }
     
     /**
-     * 根據城市名稱獲取天氣 - 對應 TypeScript 的 getWeatherByCity
+     * Get weather by city name - corresponds to TypeScript getWeatherByCity
      */
     suspend fun getWeatherByCity(city: String): WeatherData = withContext(Dispatchers.IO) {
         val cacheKey = "city_$city"
         
-        // 檢查快取
+        // Check cache
         weatherCache[cacheKey]?.let { cached ->
             if (System.currentTimeMillis() - cached.timestamp < CACHE_EXPIRY_MS) {
-                Log.d(TAG, "📦 使用快取的城市天氣資料")
+                Log.d(TAG, "📦 Using cached city weather data")
                 return@withContext cached.data
             }
         }
         
         try {
-            Log.d(TAG, "🏙️ 從 wttr.in 獲取城市天氣: $city")
+            Log.d(TAG, "🏙️ Getting city weather from wttr.in: $city")
             
             val encodedCity = java.net.URLEncoder.encode(city, "UTF-8")
             val url = "$WTTR_BASE_URL/$encodedCity?format=j1"
@@ -298,44 +298,44 @@ class WeatherService(private val context: Context) {
             val response = client.newCall(request).execute()
             
             if (!response.isSuccessful) {
-                throw IOException("API 請求失敗: ${response.code}")
+                throw IOException("API request failed: ${response.code}")
             }
             
             val responseBody = response.body?.string()
-                ?: throw IOException("回應內容為空")
+                ?: throw IOException("Response content is empty")
             
-            Log.d(TAG, "✅ API 回應成功，解析資料中...")
+            Log.d(TAG, "✅ API response successful, parsing data...")
             
             val weatherData = parseWttrResponse(responseBody)
             
-            // 快取結果
+            // Cache result
             weatherCache[cacheKey] = CachedWeatherData(weatherData, System.currentTimeMillis())
             
-            Log.d(TAG, "🎉 城市天氣獲取成功: ${weatherData.city}")
+            Log.d(TAG, "🎉 City weather obtained successfully: ${weatherData.city}")
             return@withContext weatherData
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 城市天氣獲取失敗: ${e.message}")
-            throw Exception("城市天氣獲取失敗: ${e.message}")
+            Log.e(TAG, "❌ Failed to get city weather: ${e.message}")
+            throw Exception("Failed to get city weather: ${e.message}")
         }
     }
     
     /**
-     * 使用IP定位獲取天氣（備用方案）
+     * Get weather using IP location (fallback)
      */
     private suspend fun getWeatherByIP(): WeatherData = withContext(Dispatchers.IO) {
         val cacheKey = "ip_location"
         
-        // 檢查快取
+        // Check cache
         weatherCache[cacheKey]?.let { cached ->
             if (System.currentTimeMillis() - cached.timestamp < CACHE_EXPIRY_MS) {
-                Log.d(TAG, "📦 使用快取的IP定位天氣資料")
+                Log.d(TAG, "📦 Using cached IP location weather data")
                 return@withContext cached.data
             }
         }
         
         try {
-            Log.d(TAG, "🌐 使用IP定位獲取天氣")
+            Log.d(TAG, "🌐 Getting weather using IP location")
             
             val url = "$WTTR_BASE_URL/?format=j1"
             val request = Request.Builder()
@@ -346,45 +346,45 @@ class WeatherService(private val context: Context) {
             val response = client.newCall(request).execute()
             
             if (!response.isSuccessful) {
-                throw IOException("API 請求失敗: ${response.code}")
+                throw IOException("API request failed: ${response.code}")
             }
             
             val responseBody = response.body?.string()
-                ?: throw IOException("回應內容為空")
+                ?: throw IOException("Response content is empty")
             
             val weatherData = parseWttrResponse(responseBody)
             
-            // 快取結果
+            // Cache result
             weatherCache[cacheKey] = CachedWeatherData(weatherData, System.currentTimeMillis())
             
-            Log.d(TAG, "🎉 IP定位天氣獲取成功: ${weatherData.city}")
+            Log.d(TAG, "🎉 IP location weather obtained successfully: ${weatherData.city}")
             return@withContext weatherData
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ IP定位天氣獲取失敗: ${e.message}")
-            throw Exception("IP定位天氣獲取失敗: ${e.message}")
+            Log.e(TAG, "❌ Failed to get IP location weather: ${e.message}")
+            throw Exception("Failed to get IP location weather: ${e.message}")
         }
     }
     
     /**
-     * 解析 wttr.in 的 JSON 回應
+     * Parse wttr.in JSON response
      */
     private fun parseWttrResponse(responseBody: String): WeatherData {
         try {
             val jsonElement = json.parseToJsonElement(responseBody)
             val jsonObject = jsonElement.jsonObject
             
-            // 獲取當前天氣條件
+            // Get current weather condition
             val currentCondition = jsonObject["current_condition"]?.jsonArray?.firstOrNull()?.jsonObject
-                ?: throw Exception("無法獲取當前天氣條件")
+                ?: throw Exception("Cannot get current weather condition")
             
-            // 獲取最近地區資訊
+            // Get nearest area information
             val nearestArea = jsonObject["nearest_area"]?.jsonArray?.firstOrNull()?.jsonObject
-                ?: throw Exception("無法獲取地區資訊")
+                ?: throw Exception("Cannot get area information")
             
-            // 解析資料
+            // Parse data
             val temperature = currentCondition["temp_C"]?.jsonPrimitive?.content?.toIntOrNull()
-                ?: throw Exception("無法解析溫度")
+                ?: throw Exception("Cannot parse temperature")
             
             val weatherDesc = currentCondition["weatherDesc"]?.jsonArray?.firstOrNull()?.jsonObject
                 ?.get("value")?.jsonPrimitive?.content
@@ -393,7 +393,7 @@ class WeatherService(private val context: Context) {
             val humidity = currentCondition["humidity"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
             
             val windSpeedKmh = currentCondition["windspeedKmph"]?.jsonPrimitive?.content?.toDoubleOrNull() ?: 0.0
-            val windSpeedMs = windSpeedKmh / 3.6 // 轉換為 m/s，對應 TypeScript 版本
+            val windSpeedMs = windSpeedKmh / 3.6 // Convert to m/s, corresponds to TypeScript version
             
             val cityName = nearestArea["areaName"]?.jsonArray?.firstOrNull()?.jsonObject
                 ?.get("value")?.jsonPrimitive?.content ?: "Unknown Location"
@@ -415,14 +415,14 @@ class WeatherService(private val context: Context) {
             )
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ JSON 解析失敗: ${e.message}")
-            Log.e(TAG, "🔍 回應內容: ${responseBody.take(500)}")
-            throw Exception("天氣資料解析失敗: ${e.message}")
+            Log.e(TAG, "❌ JSON parsing failed: ${e.message}")
+            Log.e(TAG, "🔍 Response content: ${responseBody.take(500)}")
+            throw Exception("Weather data parsing failed: ${e.message}")
         }
     }
     
     /**
-     * 根據天氣條件獲取圖示代碼 - 對應 TypeScript 的 getIconFromCondition
+     * Get icon code based on weather condition - corresponds to TypeScript getIconFromCondition
      */
     private fun getIconFromCondition(condition: String): String {
         val conditionLower = condition.lowercase()
@@ -439,7 +439,7 @@ class WeatherService(private val context: Context) {
     }
     
     /**
-     * 獲取當前GPS位置
+     * Get current GPS location
      */
     private suspend fun getCurrentLocation(): Location? = withContext(Dispatchers.Main) {
         try {
@@ -449,39 +449,39 @@ class WeatherService(private val context: Context) {
             
             val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
             
-            // 檢查GPS是否開啟
+            // Check if GPS is enabled
             if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) &&
                 !locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                Log.w(TAG, "⚠️ GPS和網路定位都未開啟")
+                Log.w(TAG, "⚠️ GPS and network location are not enabled")
                 return@withContext null
             }
             
-            // 嘗試獲取最後已知位置
+            // Try to get last known location
             val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
             
             for (provider in providers) {
                 try {
                     val location = locationManager.getLastKnownLocation(provider)
                     if (location != null) {
-                        Log.d(TAG, "📍 使用 $provider 獲取位置成功")
+                        Log.d(TAG, "📍 Successfully obtained location using $provider")
                         return@withContext location
                     }
                 } catch (e: SecurityException) {
-                    Log.w(TAG, "⚠️ $provider 權限不足")
+                    Log.w(TAG, "⚠️ $provider permission insufficient")
                 }
             }
             
-            Log.w(TAG, "⚠️ 無法獲取位置資訊")
+            Log.w(TAG, "⚠️ Cannot get location information")
             return@withContext null
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 位置獲取異常: ${e.message}")
+            Log.e(TAG, "❌ Location acquisition exception: ${e.message}")
             return@withContext null
         }
     }
     
     /**
-     * 檢查位置權限
+     * Check location permission
      */
     private fun hasLocationPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
@@ -495,7 +495,7 @@ class WeatherService(private val context: Context) {
     }
     
     /**
-     * 獲取模擬天氣資料 - 對應 TypeScript 的 getMockWeather
+     * Get mock weather data - corresponds to TypeScript getMockWeather
      */
     fun getMockWeather(): WeatherData {
         val temperatures = listOf(15, 18, 22, 25, 28, 30)
@@ -505,25 +505,25 @@ class WeatherService(private val context: Context) {
         temperature = 25,
         condition = "Sunny",
         description = "mock weather data",
-        city = "測試城市",
-        country = "台灣",
+        city = "Test City",
+        country = "Taiwan",
         humidity = 65,
         windSpeed = 5.0,
         icon = "01d"
     )
     }
     /**
-     * 獲取快取狀態
+     * Get cache status
      */
     fun getCacheStatus(): String {
         val activeEntries = weatherCache.entries.count { 
             System.currentTimeMillis() - it.value.timestamp < CACHE_EXPIRY_MS 
         }
-        return "快取項目: $activeEntries/${weatherCache.size}"
+        return "Cache items: $activeEntries/${weatherCache.size}"
     }
     
     /**
-     * 清理過期快取
+     * Clear expired cache
      */
     fun clearCache() {
         val currentTime = System.currentTimeMillis()
@@ -532,24 +532,24 @@ class WeatherService(private val context: Context) {
             .map { it.key }
         
         expiredKeys.forEach { weatherCache.remove(it) }
-        Log.d(TAG, "🧹 清理了 ${expiredKeys.size} 個過期快取項目")
+        Log.d(TAG, "🧹 Cleared ${expiredKeys.size} expired cache items")
     }
     
     /**
-     * 測試API連接
+     * Test API connection
      */
     suspend fun testConnection(): String {
         return try {
             val mockWeather = getMockWeather()
-            "✅ WeatherService 測試成功\n模擬資料: ${mockWeather.city}, ${mockWeather.condition}, ${mockWeather.temperature}°C"
+            "✅ WeatherService test successful\nMock data: ${mockWeather.city}, ${mockWeather.condition}, ${mockWeather.temperature}°C"
         } catch (e: Exception) {
-            "❌ WeatherService 測試失敗: ${e.message}"
+            "❌ WeatherService test failed: ${e.message}"
         }
     }
 }
 
 /**
- * 天氣資料類 - 對應 TypeScript 的 WeatherData 接口
+ * Weather data class - corresponds to TypeScript WeatherData interface
  */
 @Serializable
 data class WeatherData(
@@ -564,7 +564,7 @@ data class WeatherData(
 )
 
 /**
- * 快取資料包裝類
+ * Cache data wrapper class
  */
 private data class CachedWeatherData(
     val data: WeatherData,

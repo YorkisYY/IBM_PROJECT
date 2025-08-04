@@ -24,9 +24,11 @@ import kotlinx.coroutines.launch
 import com.example.ibm_project.FilamentViewer
 import com.google.ar.core.ArCoreApk
 import android.util.Log
-import watsonx.WatsonAIEnhanced  // 🔄 改為使用 Enhanced
+import watsonx.WatsonAIEnhanced
 import utils.rememberTypewriterEffect
-import functions.WeatherFunctions 
+import functions.WeatherFunctions
+import functions.SMSFunctions
+import android.provider.Telephony
 class MainActivity : ComponentActivity() {
 
     private var filamentViewer: FilamentViewer? = null
@@ -37,15 +39,23 @@ class MainActivity : ComponentActivity() {
     ) { permissions ->
         val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
         val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+        val readSmsGranted = permissions[Manifest.permission.READ_SMS] ?: false
         
         when {
             fineLocationGranted || coarseLocationGranted -> {
                 Log.d("MainActivity", "✅ 位置權限已授予")
-                // 權限已授予，可以使用位置功能
             }
             else -> {
                 Log.w("MainActivity", "⚠️ 位置權限被拒絕，將使用IP定位")
-                // 權限被拒絕，將使用IP定位作為備用方案
+            }
+        }
+        
+        when {
+            readSmsGranted -> {
+                Log.d("MainActivity", "✅ 簡訊權限已授予")
+            }
+            else -> {
+                Log.w("MainActivity", "⚠️ 簡訊權限被拒絕，簡訊功能將不可用")
             }
         }
     }
@@ -55,7 +65,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         Log.e("TEST_LOG", "=== super.onCreate 完成 ===")
 
-        // 🆕 請求位置權限（如果需要GPS定位）
+        // 🆕 請求位置權限和簡訊權限
         requestLocationPermissionIfNeeded()
 
         // 隱藏標題列
@@ -78,7 +88,7 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * 🆕 請求位置權限（如果需要GPS定位）
+     * 🆕 請求位置權限和簡訊權限
      */
     private fun requestLocationPermissionIfNeeded() {
         val fineLocationPermission = ContextCompat.checkSelfPermission(
@@ -87,19 +97,27 @@ class MainActivity : ComponentActivity() {
         val coarseLocationPermission = ContextCompat.checkSelfPermission(
             this, Manifest.permission.ACCESS_COARSE_LOCATION
         )
+        val readSmsPermission = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.READ_SMS
+        )
+        
+        val permissionsToRequest = mutableListOf<String>()
         
         if (fineLocationPermission != PackageManager.PERMISSION_GRANTED && 
             coarseLocationPermission != PackageManager.PERMISSION_GRANTED) {
-            
-            Log.d("MainActivity", "🔧 請求位置權限...")
-            locationPermissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
+            permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
+            permissionsToRequest.add(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
+        
+        if (readSmsPermission != PackageManager.PERMISSION_GRANTED) {
+            permissionsToRequest.add(Manifest.permission.READ_SMS)
+        }
+        
+        if (permissionsToRequest.isNotEmpty()) {
+            Log.d("MainActivity", "🔧 請求權限...")
+            locationPermissionLauncher.launch(permissionsToRequest.toTypedArray())
         } else {
-            Log.d("MainActivity", "✅ 位置權限已存在")
+            Log.d("MainActivity", "✅ 位置和簡訊權限已存在")
         }
     }
 
@@ -114,7 +132,7 @@ class MainActivity : ComponentActivity() {
         var inputText by remember { mutableStateOf("") }
         var isLoading by remember { mutableStateOf(false) }
         
-        // 🆕 使用打字機效果管理器
+        // 使用打字機效果管理器
         val typewriter = rememberTypewriterEffect()
         var isChatVisible by remember { mutableStateOf(false) }
         
@@ -162,7 +180,7 @@ class MainActivity : ComponentActivity() {
                         Log.d("MainActivity", "📍 收到位置更新: $position")
                         modelTopPosition = position
                         
-                        // 🔧 當有新對話時，計算動態寬度
+                        // 當有新對話時，計算動態寬度
                         if (isChatVisible && typewriter.state.value.fullText.isNotEmpty()) {
                             val positionWithWidth = this.getModelTopScreenPosition(typewriter.state.value.fullText)
                             positionWithWidth?.let {
@@ -255,7 +273,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // 🎯 智能對話框位置 - 使用打字機效果
+            // 智能對話框位置 - 使用打字機效果
             if (isChatVisible) {
                 val bubbleWidth = with(density) { 
                     if (modelTopPosition != null && filamentReady) {
@@ -287,7 +305,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.width(bubbleWidth)
                     ) {
                         ChatBubble(
-                            message = typewriter.state.value.displayedText, // 🎯 使用打字機效果文字
+                            message = typewriter.state.value.displayedText,
                             isVisible = isChatVisible,
                             position = Pair(0f, 0f),
                             modifier = Modifier.fillMaxWidth()
@@ -312,15 +330,15 @@ class MainActivity : ComponentActivity() {
                             inputText = ""
                             isLoading = true
                             
-                            // 🎯 立即清除舊對話
+                            // 立即清除舊對話
                             isChatVisible = false
-                            typewriter.reset() // 🆕 重置打字機效果
+                            typewriter.reset()
 
                             coroutineScope.launch {
                                 try {
                                     val reply = processUserMessage(userMessage)
                                     
-                                    // 🔧 計算新對話的動態寬度和位置
+                                    // 計算新對話的動態寬度和位置
                                     val positionWithWidth = filamentViewer?.getModelTopScreenPosition(reply)
                                     if (positionWithWidth != null) {
                                         modelTopPosition = Pair(positionWithWidth.first, positionWithWidth.second)
@@ -328,14 +346,14 @@ class MainActivity : ComponentActivity() {
                                         Log.d("MainActivity", "📏 新對話動態寬度: ${positionWithWidth.third}")
                                     }
                                     
-                                    // 🎯 顯示新對話並啟動打字機效果
+                                    // 顯示新對話並啟動打字機效果
                                     isChatVisible = true
-                                    typewriter.startTyping(reply, 200L, coroutineScope) // 🆕 啟動打字機效果
+                                    typewriter.startTyping(reply, 200L, coroutineScope)
                                     
                                 } catch (e: Exception) {
                                     Log.e("MainActivity", "❌ 处理用户消息失败", e)
                                     isChatVisible = true
-                                    typewriter.startTyping("抱歉，我現在無法回答 😿", 200L, coroutineScope) // 🆕 錯誤訊息也有打字機效果
+                                    typewriter.startTyping("抱歉，我現在無法回答 😿", 200L, coroutineScope)
                                 } finally {
                                     isLoading = false
                                 }
@@ -350,7 +368,7 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * 🔄 使用 Watson AI Enhanced 處理用戶消息 - 支持 Function Calling
+     * 使用 Watson AI Enhanced 處理用戶消息 - 支持 Function Calling
      */
     private suspend fun processUserMessage(message: String): String {
         return try {
@@ -363,12 +381,12 @@ class MainActivity : ComponentActivity() {
                 result.response
             } else {
                 Log.e("MainActivity", "❌ Enhanced AI 回复失败: ${result.error}")
-                "AI connection failed 😿"
+                "抱歉，我現在無法回答您的請求 😿"
             }
             
         } catch (e: Exception) {
             Log.e("MainActivity", "❌ Enhanced AI 调用异常", e)
-            "AI connection failed 😿"
+            "AI 連接遇到問題，請稍後再試 😿"
         }
     }
 
