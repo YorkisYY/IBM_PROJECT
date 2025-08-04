@@ -167,7 +167,7 @@ object WeatherFunctions {
  * Weather Service - using wttr.in API
  * Converted from TypeScript version, using the same API endpoints
  */
-class WeatherService(private val context: Context) {
+class WeatherService(val context: Context) {
     
     companion object {
         private const val TAG = "WeatherService"

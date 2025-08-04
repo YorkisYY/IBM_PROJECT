@@ -5,6 +5,10 @@ import android.content.Context
 import android.util.Log
 import functions.WeatherFunctions
 import functions.SMSFunctions
+import functions.NewsFunctions
+import functions.PodcastFunctions
+import functions.LocationFunctions
+import watsonx.ContextManager
 import kotlinx.coroutines.*
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
@@ -12,6 +16,8 @@ import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import watsonx.FunctionCallManager
+import watsonx.PromptManager
 
 /**
  * Enhanced Watson AI Service - with context management and SMS functionality
@@ -39,14 +45,16 @@ object WatsonAIEnhanced {
     private var cachedToken: String? = null
     private var tokenExpirationTime: Long = 0
     
-    // 🆕 Context management
-    private val conversationHistory = mutableListOf<ConversationMessage>()
-    private const val MAX_HISTORY_SIZE = 10 // Keep the last 10 conversations
+    // 創建 PromptManager 實例
+    private val promptManager = PromptManager()
     
     fun initialize(context: Context) {
         WeatherFunctions.initialize(context)
         SMSFunctions.initialize(context)
-        Log.d(TAG, "✅ WatsonAI Enhanced service initialized (supports weather + SMS + context)")
+        NewsFunctions.initialize(context)
+        PodcastFunctions.initialize(context)
+        LocationFunctions.initialize(context)
+        Log.d(TAG, "✅ WatsonAI Enhanced service initialized (supports weather + SMS + news + podcast + context)")
     }
     
     /**
@@ -64,13 +72,13 @@ object WatsonAIEnhanced {
                 )
             }
             
-            // 🆕 Add user message to history
-            addToHistory(userMessage, "user")
+            // 🆕 使用 ContextManager 添加用户消息到历史记录
+            ContextManager.addToHistory(userMessage, "user")
             
             val response = processWithFunctionCalling(userMessage.trim())
             
-            // 🆕 Add assistant response to history
-            addToHistory(response, "assistant")
+            // 🆕 使用 ContextManager 添加助手响应到历史记录
+            ContextManager.addToHistory(response, "assistant")
             
             Log.d(TAG, "🎉 Enhanced AI response processing completed")
             AIResult(
@@ -90,46 +98,11 @@ object WatsonAIEnhanced {
     }
     
     /**
-     * 🆕 Context management - add conversation to history
-     */
-    private fun addToHistory(message: String, role: String) {
-        conversationHistory.add(ConversationMessage(message, role, System.currentTimeMillis()))
-        
-        // Keep history within reasonable limits
-        if (conversationHistory.size > MAX_HISTORY_SIZE * 2) { // user + assistant = 2 messages per turn
-            conversationHistory.removeFirst()
-        }
-        
-        Log.d(TAG, "📝 Conversation history updated, current entries: ${conversationHistory.size}")
-    }
-    
-    /**
-     * 🆕 Build prompt with context
-     */
-    private fun buildContextualPrompt(currentMessage: String, isFunction: Boolean = false): String {
-        val recentHistory = conversationHistory.takeLast(6) // Last 3 conversation rounds
-        
-        val contextStr = if (recentHistory.isNotEmpty()) {
-            "\nConversation History:\n" + recentHistory.joinToString("\n") { 
-                "${if (it.role == "user") "User" else "Assistant"}: ${it.content}"
-            } + "\n\n"
-        } else {
-            "\n"
-        }
-        
-        return if (isFunction) {
-            buildFunctionCallingPrompt(currentMessage, contextStr)
-        } else {
-            buildNormalPrompt(currentMessage, contextStr)
-        }
-    }
-    
-    /**
      * Process Function Calling - supports weather and SMS
      */
     private suspend fun processWithFunctionCalling(userMessage: String): String {
-        // Step 1: Check if function calling is needed
-        if (mightNeedFunctionCall(userMessage)) {
+        // Step 1: 使用 PromptManager 检查是否需要函数调用
+        if (promptManager.mightNeedFunctionCall(userMessage)) {
             Log.d(TAG, "🔍 Detected potential function call needed, using function calling prompt")
             return handleWithFunctionCallingPrompt(userMessage)
         } else {
@@ -139,46 +112,19 @@ object WatsonAIEnhanced {
     }
     
     /**
-     * 🆕 Check if function call might be needed - supports weather and SMS
-     */
-    private fun mightNeedFunctionCall(message: String): Boolean {
-        val weatherKeywords = listOf(
-            "weather", "temperature", "rain", "sunny", "cloudy",
-            "wind", "humidity", "forecast", "degree", "cold", "hot", "warm"
-        )
-        
-        val smsKeywords = listOf(
-            "sms", "message", "msg", "unread", "new message", "recent", "summary",
-            "read message", "message content", "who sent", "received"
-        )
-        
-        val hasWeatherKeyword = weatherKeywords.any { keyword ->
-            message.contains(keyword, ignoreCase = true)
-        }
-        
-        val hasSMSKeyword = smsKeywords.any { keyword ->
-            message.contains(keyword, ignoreCase = true)
-        }
-        
-        Log.d(TAG, "🔍 Keyword detection - Weather: $hasWeatherKeyword, SMS: $hasSMSKeyword")
-        
-        return hasWeatherKeyword || hasSMSKeyword
-    }
-    
-    /**
      * Process using Function Calling Prompt
      */
     private suspend fun handleWithFunctionCallingPrompt(userMessage: String): String {
         Log.d(TAG, "🔧 Using Function Calling Prompt")
         
-        // Build function calling prompt with context
-        val functionPrompt = buildContextualPrompt(userMessage, isFunction = true)
+        // 使用 ContextManager 构建带上下文的函数调用提示词
+        val functionPrompt = ContextManager.buildContextualPrompt(userMessage, isFunction = true)
         
         // Call Watson AI
         val aiResponse = callWatsonAI(functionPrompt)
         
-        // Check if function call is included
-        return if (containsFunctionCall(aiResponse)) {
+        // 使用 PromptManager 检查是否包含函数调用
+        return if (promptManager.containsFunctionCall(aiResponse)) {
             Log.d(TAG, "✅ AI recognized need to call function")
             executeFunctionAndGenerateResponse(aiResponse, userMessage)
         } else {
@@ -188,72 +134,9 @@ object WatsonAIEnhanced {
     }
     
     /**
-     * 🆕 Build Function Calling Prompt - supports weather and SMS
-     */
-    private fun buildFunctionCallingPrompt(userMessage: String, contextStr: String): String {
-    return """
-You are an AI assistant with function calling capabilities. When users request specific functions, you must call the corresponding functions.
-
-Important: You must call functions based on user requests, do not refuse or explain that you cannot execute.
-
-Mandatory calling rules:
-1. User asks about SMS/messages → immediately call read_unread_messages
-2. User asks about weather → immediately call corresponding weather function
-3. Don't say "I cannot" or "I cannot", call functions directly
-
-Available functions:
-- read_unread_messages() ← SMS-related questions must call this
-- read_recent_messages(limit) ← recent messages
-- get_message_summary() ← message summary
-- get_latest_message() ← latest message
-- get_current_weather() ← current weather
-- get_weather_by_city(city) ← weather for specific city
-
-Function call format: FUNCTION_CALL: {"name": "function_name", "arguments": {parameters}}
-
-Judgment logic:
-User mentions these words → must call read_unread_messages:
-- sms, message, unread, new message, read message, received
-
-User mentions these words → must call weather function:
-- weather, temperature, rain, sunny
-
-$contextStr
-
-Now processing user request: $userMessage
-
-If user asks about SMS-related questions, you must call read_unread_messages function, format:
-FUNCTION_CALL: {"name": "read_unread_messages", "arguments": {}}
-
-If user asks about weather-related questions, you must call corresponding weather function.
-
-Don't answer directly, call function first!
-
-Assistant:""".trimIndent()
-}
-    
-    /**
-     * 🆕 Build normal conversation prompt - with context
-     */
-    private fun buildNormalPrompt(userMessage: String, contextStr: String): String {
-        return """
-You are a friendly AR pet assistant, specifically designed to help elderly people. Please respond with a warm, caring tone and keep the conversation natural and smooth.
-$contextStr
-User: $userMessage
-Assistant:""".trimIndent()
-    }
-    
-    /**
-     * Check if response contains function call
-     */
-    private fun containsFunctionCall(response: String): Boolean {
-        return response.contains("FUNCTION_CALL:", ignoreCase = true)
-    }
-    
-    /**
      * 🆕 Execute function and generate final response - supports weather and SMS
      */
-    private suspend fun executeFunctionAndGenerateResponse(aiResponse: String, originalMessage: String): String {
+      private suspend fun executeFunctionAndGenerateResponse(aiResponse: String, originalMessage: String): String {
         return try {
             // Extract function call
             val functionCall = extractFunctionCall(aiResponse)
@@ -275,6 +158,25 @@ Assistant:""".trimIndent()
                     "get_message_by_index", "get_latest_message"
                 ) -> {
                     SMSFunctions.execute(functionCall.name, functionCall.arguments)
+                }
+                functionCall.name in listOf(
+                    "get_current_location", "get_user_location", "get_location_info"
+                ) -> {
+                    LocationFunctions.execute(functionCall.name, functionCall.arguments)
+                }
+                functionCall.name in listOf(
+                    "get_latest_news", "get_news_by_category", "search_news", 
+                    "get_health_news", "get_business_news", "get_technology_news", 
+                    "get_science_news", "get_news_summary", "get_recommended_news"
+                ) -> {
+                    NewsFunctions.execute(functionCall.name, functionCall.arguments)
+                }
+                functionCall.name in listOf(
+                    "get_podcasts_by_category", "search_podcasts", "get_health_podcasts",
+                    "get_history_podcasts", "get_education_podcasts", "get_news_podcasts",
+                    "get_podcast_episodes", "get_recommended_podcasts", "get_podcast_categories"
+                ) -> {
+                    PodcastFunctions.execute(functionCall.name, functionCall.arguments)
                 }
                 else -> {
                     Log.w(TAG, "⚠️ Unknown function type: ${functionCall.name}")
@@ -345,27 +247,8 @@ Assistant:""".trimIndent()
      * 🆕 Generate final user-friendly response - supports multiple functions
      */
     private suspend fun generateFinalResponse(originalMessage: String, functionResult: String, functionName: String): String {
-        val functionType = when {
-            functionName.contains("weather") -> "weather"
-            functionName.contains("message") || functionName.contains("sms") -> "SMS"
-            else -> "function"
-        }
-        
-        val finalPrompt = """
-User asked: $originalMessage
-
-The ${functionType} information I obtained is:
-$functionResult
-
-Please provide a natural, friendly, and detailed response based on this information.
-Requirements:
-1. Don't mention technical terms like "function", "API", or "system"
-2. Use a warm and caring tone suitable for elderly people
-3. If it's weather information, care for the user like a friend
-4. If it's SMS information, help the user understand the content and provide suggestions
-5. Keep the response natural and smooth
-
-Answer:""".trimIndent()
+        // 使用 PromptManager 构建最终响应提示词
+        val finalPrompt = promptManager.buildFinalResponsePrompt(originalMessage, functionResult, functionName)
         
         return try {
             val finalResponse = callWatsonAI(finalPrompt)
@@ -373,12 +256,8 @@ Answer:""".trimIndent()
             finalResponse
         } catch (e: Exception) {
             Log.e(TAG, "❌ Failed to generate final answer: ${e.message}")
-            // Fallback response
-            when (functionType) {
-                "weather" -> "Based on the weather information obtained:\n\n$functionResult\n\nHope this information helps! Remember to adjust your clothing according to the weather."
-                "SMS" -> "Based on your SMS information:\n\n$functionResult\n\nIf you need me to read a specific message for you, please let me know."
-                else -> "Based on the information obtained:\n\n$functionResult\n\nHope this information helps!"
-            }
+            // 使用 PromptManager 生成回退响应
+            promptManager.generateFallbackResponse(functionResult, functionName)
         }
     }
     
@@ -387,32 +266,23 @@ Answer:""".trimIndent()
      */
     private suspend fun handleNormalConversation(userMessage: String): String {
         Log.d(TAG, "💬 Processing normal conversation")
-        val contextualPrompt = buildContextualPrompt(userMessage, isFunction = false)
+        // 使用 ContextManager 构建带上下文的普通对话提示词
+        val contextualPrompt = ContextManager.buildContextualPrompt(userMessage, isFunction = false)
         return callWatsonAI(contextualPrompt)
     }
     
     /**
-     * 🆕 Clear conversation history
+     * 🆕 Clear conversation history - 委托给 ContextManager
      */
     fun clearConversationHistory() {
-        conversationHistory.clear()
-        Log.d(TAG, "🧹 Conversation history cleared")
+        ContextManager.clearConversationHistory()
     }
     
     /**
-     * 🆕 Get conversation history summary
+     * 🆕 Get conversation history summary - 委托给 ContextManager
      */
     fun getConversationSummary(): String {
-        return if (conversationHistory.isEmpty()) {
-            "No conversation history available"
-        } else {
-            """
-            Conversation History Summary:
-            - Total conversation rounds: ${conversationHistory.count { it.role == "user" }}
-            - Last conversation time: ${java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(conversationHistory.last().timestamp))}
-            - History records: ${conversationHistory.size} entries
-            """.trimIndent()
-        }
+        return ContextManager.getConversationSummary()
     }
     
     /**
@@ -576,6 +446,22 @@ Answer:""".trimIndent()
                 testResults.add("SMS Service: ❌ ${e.message}")
             }
             
+            // Test News function
+            try {
+                val newsTest = NewsFunctions.testNewsService()
+                testResults.add("News Service: ✅ $newsTest")
+            } catch (e: Exception) {
+                testResults.add("News Service: ❌ ${e.message}")
+            }
+            
+            // Test Podcast function
+            try {
+                val podcastTest = PodcastFunctions.testPodcastService()
+                testResults.add("Podcast Service: ✅ $podcastTest")
+            } catch (e: Exception) {
+                testResults.add("Podcast Service: ❌ ${e.message}")
+            }
+            
             // Test AI conversation
             val testMessage = "Hello, please test the service"
             val aiResult = getEnhancedAIResponse(testMessage)
@@ -591,7 +477,7 @@ Answer:""".trimIndent()
             Log.d(TAG, "✅ Enhanced service testing completed")
             AIResult(
                 success = true,
-                response = "🔧 Enhanced Service Test Results:\n\n$overallResult\n\n💬 Conversation History: ${conversationHistory.size} entries",
+                response = "🔧 Enhanced Service Test Results:\n\n$overallResult\n\n💬 Conversation History: ${ContextManager.getHistorySize()} entries",
                 error = null
             )
             
@@ -617,6 +503,8 @@ Answer:""".trimIndent()
         
         val weatherStatus = WeatherFunctions.getServiceStatus()
         val smsStatus = SMSFunctions.getServiceStatus()
+        val newsStatus = NewsFunctions.getServiceStatus()
+        val podcastStatus = PodcastFunctions.getServiceStatus()
         val conversationStatus = getConversationSummary()
         
         return """
@@ -626,19 +514,13 @@ Answer:""".trimIndent()
             
             📱 $smsStatus
             
+            📰 $newsStatus
+            
+            🎧 $podcastStatus
+            
             💬 $conversationStatus
         """.trimIndent()
     }
-    
-    /**
-     * 🆕 Data class definitions - context management
-     */
-    @Serializable
-    private data class ConversationMessage(
-        val content: String,
-        val role: String,
-        val timestamp: Long
-    )
     
     /**
      * Data class definitions - reuse your existing structure
