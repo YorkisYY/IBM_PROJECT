@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
-import android.view.GestureDetector
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -17,6 +16,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.RotateRight
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -59,14 +59,16 @@ import io.github.sceneview.ar.rememberARCameraStream
 import io.github.sceneview.ar.node.AnchorNode
 
 /**
- * Main Activity - AR Cat Interaction App with Working SceneView 2.3.0 Rotation Support
+ * Main Activity - AR Cat Interaction App with Working SceneView 2.3.0 Dual-Axis Rotation Support
  */
 class MainActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
         private const val GLB_MODEL_PATH = "cute_spooky_cat.glb"
-        private const val ROTATION_SENSITIVITY = 3.0f
+        private const val ROTATION_SENSITIVITY_X = 2.0f // 上下旋轉靈敏度
+        private const val ROTATION_SENSITIVITY_Y = 3.0f // 左右旋轉靈敏度
+        private const val MIN_ROTATION_DISTANCE = 20f   // 最小旋轉距離
     }
     
     // AR Renderer (simplified for proper SceneView usage)
@@ -77,7 +79,14 @@ class MainActivity : ComponentActivity() {
     private var isRotating = false
     private var lastTouchX = 0f
     private var lastTouchY = 0f
-    private var rotationStartY = 0f
+    private var rotationStartX = 0f  // 記錄初始X軸旋轉
+    private var rotationStartY = 0f  // 記錄初始Y軸旋轉
+    private var touchStartX = 0f     // 記錄觸摸起始X位置
+    private var touchStartY = 0f     // 記錄觸摸起始Y位置
+    
+    // Rotation sensitivity (adjustable)
+    private var rotationSensitivityX = 2.0f
+    private var rotationSensitivityY = 3.0f
     
     // Store all placed model nodes for interaction
     private val placedModelNodes = mutableListOf<ModelNode>()
@@ -174,6 +183,7 @@ class MainActivity : ComponentActivity() {
         var isLoading by remember { mutableStateOf(false) }
         var chatMessage by remember { mutableStateOf("") }
         var isChatVisible by remember { mutableStateOf(false) }
+        var showSettings by remember { mutableStateOf(false) }
         
         // AR state from renderer
         val planesCount = arRenderer.detectedPlanesCount.value
@@ -207,7 +217,7 @@ class MainActivity : ComponentActivity() {
         }
 
         Box(modifier = Modifier.fillMaxSize()) {
-            // Main AR View with proper touch handling
+            // Main AR View with correct SceneView 2.3.0 syntax
             ARScene(
                 modifier = Modifier.fillMaxSize(),
                 childNodes = childNodes,
@@ -226,12 +236,12 @@ class MainActivity : ComponentActivity() {
                 // AR camera stream
                 cameraStream = rememberARCameraStream(materialLoader),
                 
-                // Session configuration using AR renderer
+                // Session configuration - CORRECT SYNTAX
                 sessionConfiguration = { arSession, config ->
                     arRenderer.configureSession(arSession, config)
                 },
                 
-                // Session lifecycle using AR renderer
+                // Session lifecycle callbacks - CORRECT SYNTAX
                 onSessionCreated = { arSession ->
                     session = arSession
                     arRenderer.onSessionCreated(arSession)
@@ -249,14 +259,14 @@ class MainActivity : ComponentActivity() {
                     arRenderer.onSessionFailed(exception)
                 },
                 
-                // Frame update handling
+                // Frame update handling - CORRECT SYNTAX
                 onSessionUpdated = { arSession, updatedFrame ->
                     frame = updatedFrame
                     session = arSession
                     arRenderer.onSessionUpdated(arSession, updatedFrame)
                 },
                 
-                // 🎯 CORRECT SceneView 2.3.0 Touch Event Handling with Rotation Support
+                // Touch event handling - CORRECT SYNTAX FOR SceneView 2.3.0
                 onTouchEvent = { motionEvent: MotionEvent, hitResult: HitResult? ->
                     when (motionEvent.action) {
                         MotionEvent.ACTION_DOWN -> {
@@ -320,11 +330,17 @@ class MainActivity : ComponentActivity() {
                             }
                             if (selectedNode != null) {
                                 Text(
-                                    text = "Drag to rotate",
+                                    text = "↔️ Drag horizontally: Y-axis rotation",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    fontSize = 10.sp,
+                                    fontSize = 9.sp,
                                     modifier = Modifier.padding(top = 2.dp)
+                                )
+                                Text(
+                                    text = "↕️ Drag vertically: X-axis rotation",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    fontSize = 9.sp
                                 )
                             }
                         }
@@ -472,27 +488,82 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         
-                        // Test placement button
+                        // Settings button
                         TextButton(
                             onClick = {
-                                coroutineScope.launch {
-                                    placeCatAtTouch(null, frame, session, modelLoader, childNodes, engine)
-                                }
+                                showSettings = true
                             }
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Pets,
-                                contentDescription = "Place Cat",
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings",
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "Place", 
+                                text = "Settings", 
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
                     }
                 }
+            }
+            
+            // Settings Dialog
+            if (showSettings) {
+                AlertDialog(
+                    onDismissRequest = { showSettings = false },
+                    title = { Text("Rotation Settings") },
+                    text = {
+                        Column {
+                            Text("Adjust rotation sensitivity:")
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            // Y-axis sensitivity slider
+                            Text("Y-axis (↔️ Horizontal) Sensitivity: ${String.format("%.1f", rotationSensitivityY)}")
+                            Slider(
+                                value = rotationSensitivityY,
+                                onValueChange = { rotationSensitivityY = it },
+                                valueRange = 0.5f..8.0f,
+                                steps = 14
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // X-axis sensitivity slider  
+                            Text("X-axis (↕️ Vertical) Sensitivity: ${String.format("%.1f", rotationSensitivityX)}")
+                            Slider(
+                                value = rotationSensitivityX,
+                                onValueChange = { rotationSensitivityX = it },
+                                valueRange = 0.5f..8.0f,
+                                steps = 14
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Higher values = faster rotation",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { showSettings = false }) {
+                            Text("Done")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = { 
+                                rotationSensitivityX = ROTATION_SENSITIVITY_X
+                                rotationSensitivityY = ROTATION_SENSITIVITY_Y
+                            }
+                        ) {
+                            Text("Reset")
+                        }
+                    }
+                )
             }
             
             // Bottom input field
@@ -533,7 +604,7 @@ class MainActivity : ComponentActivity() {
                     },
                     placeholder = when {
                         selectedNode != null -> "Selected: ${selectedNode?.name} - Drag to rotate..."
-                        modelsCount > 0 -> "Tap cats to rotate, tap empty space to place new cats..."
+                        modelsCount > 0 -> "Tap cats to rotate (↔️ Y-axis, ↕️ X-axis), tap empty space to place new cats..."
                         else -> "Tap anywhere to place cats..."
                     },
                     isLoading = isLoading
@@ -556,6 +627,8 @@ class MainActivity : ComponentActivity() {
     ) {
         lastTouchX = motionEvent.x
         lastTouchY = motionEvent.y
+        touchStartX = motionEvent.x
+        touchStartY = motionEvent.y
         
         // Check if touching an existing model for rotation
         val touchedModel = findTouchedModel(motionEvent.x, motionEvent.y)
@@ -563,8 +636,12 @@ class MainActivity : ComponentActivity() {
             Log.d(TAG, "🎯 Model selected for rotation: ${touchedModel.name}")
             selectedNode = touchedModel
             isRotating = false
+            
+            // 記錄當前的旋轉值作為起始點
+            rotationStartX = touchedModel.rotation.x
             rotationStartY = touchedModel.rotation.y
-            arRenderer.planeDetectionStatus.value = "Cat selected for rotation: ${touchedModel.name}"
+            
+            arRenderer.planeDetectionStatus.value = "Cat selected: ${touchedModel.name} - Drag to rotate!"
             return
         }
         
@@ -575,29 +652,55 @@ class MainActivity : ComponentActivity() {
     }
     
     /**
-     * Handle touch move event for rotation
+     * Handle touch move event for dual-axis rotation
      */
     private fun handleTouchMove(motionEvent: MotionEvent) {
         selectedNode?.let { node ->
-            val deltaX = motionEvent.x - lastTouchX
-            val deltaY = motionEvent.y - lastTouchY
-            val distance = kotlin.math.sqrt(deltaX * deltaX + deltaY * deltaY)
+            val deltaX = motionEvent.x - touchStartX  // 水平移動距離
+            val deltaY = motionEvent.y - touchStartY  // 垂直移動距離
+            val totalDistance = kotlin.math.sqrt(deltaX * deltaX + deltaY * deltaY)
             
             // Only rotate if movement is significant enough
-            if (distance > 30f) {
+            if (totalDistance > MIN_ROTATION_DISTANCE) {
                 if (!isRotating) {
                     isRotating = true
-                    Log.d(TAG, "🔄 Started rotating: ${node.name}")
+                    Log.d(TAG, "🔄 Started dual-axis rotating: ${node.name}")
                 }
                 
-                // Calculate rotation based on horizontal movement
-                val rotationDelta = deltaX * ROTATION_SENSITIVITY
-                val newRotationY = (rotationStartY + rotationDelta) % 360f
+                // 計算雙軸旋轉
+                // 水平移動控制Y軸旋轉（左右轉頭）
+                val rotationDeltaY = deltaX * rotationSensitivityY
+                val newRotationY = (rotationStartY + rotationDeltaY) % 360f
                 
-                node.rotation = Rotation(x = 0f, y = newRotationY, z = 0f)
+                // 垂直移動控制X軸旋轉（上下點頭），限制角度範圍
+                val rotationDeltaX = -deltaY * rotationSensitivityX  // 負號讓向上拖拽向上旋轉
+                var newRotationX = rotationStartX + rotationDeltaX
                 
-                Log.d(TAG, "🔄 Rotating ${node.name} to Y: $newRotationY°")
-                arRenderer.planeDetectionStatus.value = "Rotating ${node.name} - Y: ${String.format("%.1f", newRotationY)}°"
+                // 限制X軸旋轉範圍，避免過度翻轉
+                newRotationX = newRotationX.coerceIn(-90f, 90f)
+                
+                // 應用旋轉
+                node.rotation = Rotation(x = newRotationX, y = newRotationY, z = 0f)
+                
+                // 判斷主要旋轉方向並顯示對應信息
+                val rotationInfo = when {
+                    kotlin.math.abs(deltaX) > kotlin.math.abs(deltaY) * 1.5f -> {
+                        "Y-axis: ${String.format("%.1f", newRotationY)}°"
+                    }
+                    kotlin.math.abs(deltaY) > kotlin.math.abs(deltaX) * 1.5f -> {
+                        "X-axis: ${String.format("%.1f", newRotationX)}°"
+                    }
+                    else -> {
+                        "X: ${String.format("%.1f", newRotationX)}°, Y: ${String.format("%.1f", newRotationY)}°"
+                    }
+                }
+                
+                Log.d(TAG, "🔄 Rotating ${node.name} - X: $newRotationX°, Y: $newRotationY°")
+                arRenderer.planeDetectionStatus.value = "Rotating ${node.name} - $rotationInfo"
+                
+                // 更新最後觸摸位置
+                lastTouchX = motionEvent.x
+                lastTouchY = motionEvent.y
             }
         }
     }
@@ -757,12 +860,17 @@ class MainActivity : ComponentActivity() {
             when (message.lowercase()) {
                 "help" -> {
                     "🐱 Tap screen to place cats in AR!\n" +
-                    "🔄 Tap any cat then drag to rotate it\n" +
+                    "🔄 Tap any cat then drag to rotate:\n" +
+                    "   ↔️ Drag horizontally for Y-axis rotation\n" +
+                    "   ↕️ Drag vertically for X-axis rotation\n" +
                     "🗑️ Use 'clear' to remove all cats"
                 }
                 "rotation", "rotate" -> {
                     if (arRenderer.placedModelsCount.value > 0) {
-                        "🔄 Tap any of the ${arRenderer.placedModelsCount.value} cats to select it, then drag to rotate!"
+                        "🔄 Tap any of the ${arRenderer.placedModelsCount.value} cats to select it, then:\n" +
+                        "↔️ Drag horizontally to rotate around Y-axis (left/right)\n" +
+                        "↕️ Drag vertically to rotate around X-axis (up/down)\n" +
+                        "You can combine both movements for dual-axis rotation!"
                     } else {
                         "🐱 Place some cats first, then you can tap and drag to rotate them!"
                     }
@@ -772,10 +880,17 @@ class MainActivity : ComponentActivity() {
                     isRotating = false
                     "All cats cleared! 🗑️"
                 }
+                "speed", "sensitivity" -> {
+                    "🎛️ Current rotation sensitivity:\n" +
+                    "↔️ Y-axis (horizontal): ${String.format("%.1f", rotationSensitivityY)}\n" +
+                    "↕️ X-axis (vertical): ${String.format("%.1f", rotationSensitivityX)}\n" +
+                    "Tap the Settings button in the control panel to adjust!"
+                }
                 "debug" -> {
                     "Debug: ${arRenderer.placedModelsCount.value} cats placed\n" +
                     "Selected: ${selectedNode?.name ?: "None"}\n" +
-                    "Rotating: $isRotating"
+                    "Rotating: $isRotating\n" +
+                    "Sensitivity Y: $rotationSensitivityY, X: $rotationSensitivityX"
                 }
                 else -> {
                     val result = WatsonAIEnhanced.getEnhancedAIResponse(message)
