@@ -38,6 +38,9 @@ import ui.components.UserInputField
 import watsonx.WatsonAIEnhanced
 import ar.ARSceneViewRenderer
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 // SceneView 2.3.0 imports
 import io.github.sceneview.rememberEngine
@@ -59,34 +62,57 @@ import io.github.sceneview.ar.rememberARCameraStream
 import io.github.sceneview.ar.node.AnchorNode
 
 /**
- * Main Activity - AR Cat Interaction App with Working SceneView 2.3.0 Dual-Axis Rotation Support
+ * 改善的 AR Cat Interaction App with Smooth 360-Degree Rotation
+ * 使用累積旋轉和速度阻尼來實現平滑的360度旋轉
  */
 class MainActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
         private const val GLB_MODEL_PATH = "cute_spooky_cat.glb"
-        private const val ROTATION_SENSITIVITY_X = 2.0f // 上下旋轉靈敏度
-        private const val ROTATION_SENSITIVITY_Y = 3.0f // 左右旋轉靈敏度
-        private const val MIN_ROTATION_DISTANCE = 20f   // 最小旋轉距離
+        
+        // 改善的旋轉參數 - 大幅降低靈敏度
+        private const val ROTATION_SENSITIVITY_X = 0.3f  // 上下旋轉靈敏度（從2.0降到0.3）
+        private const val ROTATION_SENSITIVITY_Y = 0.5f  // 左右旋轉靈敏度（從3.0降到0.5）
+        private const val MIN_ROTATION_DISTANCE = 10f    // 最小旋轉距離（從20降到10）
+        
+        // 新增：速度阻尼和平滑參數
+        private const val VELOCITY_DAMPING = 0.85f       // 速度阻尼係數
+        private const val SMOOTH_FACTOR = 0.15f          // 平滑插值係數
+        private const val MIN_VELOCITY_THRESHOLD = 0.01f // 最小速度閾值
     }
     
-    // AR Renderer (simplified for proper SceneView usage)
+    // AR Renderer
     private lateinit var arRenderer: ARSceneViewRenderer
     
-    // Rotation state
+    // 改善的旋轉狀態管理
     private var selectedNode: ModelNode? = null
     private var isRotating = false
+    
+    // 觸摸狀態
     private var lastTouchX = 0f
     private var lastTouchY = 0f
-    private var rotationStartX = 0f  // 記錄初始X軸旋轉
-    private var rotationStartY = 0f  // 記錄初始Y軸旋轉
-    private var touchStartX = 0f     // 記錄觸摸起始X位置
-    private var touchStartY = 0f     // 記錄觸摸起始Y位置
+    private var touchStartX = 0f
+    private var touchStartY = 0f
     
-    // Rotation sensitivity (adjustable)
-    private var rotationSensitivityX = 2.0f
-    private var rotationSensitivityY = 3.0f
+    // 累積旋轉值（支持超過360度）
+    private var accumulatedRotationX = 0f  // 累積X軸旋轉
+    private var accumulatedRotationY = 0f  // 累積Y軸旋轉
+    
+    // 速度追蹤
+    private var velocityX = 0f
+    private var velocityY = 0f
+    private var lastMoveTime = 0L
+    
+    // 目標旋轉值（用於平滑插值）
+    private var targetRotationX = 0f
+    private var targetRotationY = 0f
+    private var currentRotationX = 0f
+    private var currentRotationY = 0f
+    
+    // 可調節的旋轉靈敏度
+    private var rotationSensitivityX = ROTATION_SENSITIVITY_X
+    private var rotationSensitivityY = ROTATION_SENSITIVITY_Y
     
     // Store all placed model nodes for interaction
     private val placedModelNodes = mutableListOf<ModelNode>()
@@ -215,9 +241,17 @@ class MainActivity : ComponentActivity() {
                 Log.e(TAG, "❌ Initialization failed: ${e.message}", e)
             }
         }
+        
+        // 平滑旋轉更新循環
+        LaunchedEffect(selectedNode) {
+            while (selectedNode != null) {
+                updateSmoothRotation()
+                delay(16) // ~60 FPS
+            }
+        }
 
         Box(modifier = Modifier.fillMaxSize()) {
-            // Main AR View with correct SceneView 2.3.0 syntax
+            // Main AR View
             ARScene(
                 modifier = Modifier.fillMaxSize(),
                 childNodes = childNodes,
@@ -230,18 +264,13 @@ class MainActivity : ComponentActivity() {
                 activity = context as ComponentActivity,
                 lifecycle = lifecycle,
                 
-                // Enable plane rendering
                 planeRenderer = true,
-                
-                // AR camera stream
                 cameraStream = rememberARCameraStream(materialLoader),
                 
-                // Session configuration - CORRECT SYNTAX
                 sessionConfiguration = { arSession, config ->
                     arRenderer.configureSession(arSession, config)
                 },
                 
-                // Session lifecycle callbacks - CORRECT SYNTAX
                 onSessionCreated = { arSession ->
                     session = arSession
                     arRenderer.onSessionCreated(arSession)
@@ -259,27 +288,25 @@ class MainActivity : ComponentActivity() {
                     arRenderer.onSessionFailed(exception)
                 },
                 
-                // Frame update handling - CORRECT SYNTAX
                 onSessionUpdated = { arSession, updatedFrame ->
                     frame = updatedFrame
                     session = arSession
                     arRenderer.onSessionUpdated(arSession, updatedFrame)
                 },
                 
-                // Touch event handling - CORRECT SYNTAX FOR SceneView 2.3.0
                 onTouchEvent = { motionEvent: MotionEvent, hitResult: HitResult? ->
                     when (motionEvent.action) {
                         MotionEvent.ACTION_DOWN -> {
-                            handleTouchDown(motionEvent, hitResult, frame, session, modelLoader, childNodes, engine)
+                            handleImprovedTouchDown(motionEvent, hitResult, frame, session, modelLoader, childNodes, engine)
                         }
                         MotionEvent.ACTION_MOVE -> {
-                            handleTouchMove(motionEvent)
+                            handleImprovedTouchMove(motionEvent)
                         }
                         MotionEvent.ACTION_UP -> {
-                            handleTouchUp()
+                            handleImprovedTouchUp()
                         }
                     }
-                    true // Always consume touch events
+                    true
                 }
             )
             
@@ -294,7 +321,7 @@ class MainActivity : ComponentActivity() {
                     Card(
                         modifier = Modifier
                             .padding(top = 80.dp)
-                            .widthIn(min = 120.dp, max = 220.dp),
+                            .widthIn(min = 120.dp, max = 260.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = if (selectedNode != null) 
@@ -330,14 +357,14 @@ class MainActivity : ComponentActivity() {
                             }
                             if (selectedNode != null) {
                                 Text(
-                                    text = "↔️ Drag horizontally: Y-axis rotation",
+                                    text = "🔄 Smooth 360° Rotation Enabled",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     fontSize = 9.sp,
                                     modifier = Modifier.padding(top = 2.dp)
                                 )
                                 Text(
-                                    text = "↕️ Drag vertically: X-axis rotation",
+                                    text = "X: ${String.format("%.1f", accumulatedRotationX)}° | Y: ${String.format("%.1f", accumulatedRotationY)}°",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     fontSize = 9.sp
@@ -399,7 +426,7 @@ class MainActivity : ComponentActivity() {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "AR Mode + Rotation",
+                            text = "AR Mode + Smooth 360° Rotation",
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleMedium
                         )
@@ -469,8 +496,7 @@ class MainActivity : ComponentActivity() {
                         if (modelsCount > 0) {
                             TextButton(
                                 onClick = {
-                                    selectedNode = null
-                                    isRotating = false
+                                    resetRotationState()
                                     placedModelNodes.clear()
                                     arRenderer.clearAllModels(childNodes)
                                 }
@@ -516,35 +542,35 @@ class MainActivity : ComponentActivity() {
                     title = { Text("Rotation Settings") },
                     text = {
                         Column {
-                            Text("Adjust rotation sensitivity:")
+                            Text("Adjust rotation sensitivity (lower = smoother):")
                             
                             Spacer(modifier = Modifier.height(16.dp))
                             
                             // Y-axis sensitivity slider
-                            Text("Y-axis (↔️ Horizontal) Sensitivity: ${String.format("%.1f", rotationSensitivityY)}")
+                            Text("Y-axis (↔️ Horizontal) Sensitivity: ${String.format("%.2f", rotationSensitivityY)}")
                             Slider(
                                 value = rotationSensitivityY,
                                 onValueChange = { rotationSensitivityY = it },
-                                valueRange = 0.5f..8.0f,
-                                steps = 14
+                                valueRange = 0.1f..2.0f,
+                                steps = 18
                             )
                             
                             Spacer(modifier = Modifier.height(8.dp))
                             
                             // X-axis sensitivity slider  
-                            Text("X-axis (↕️ Vertical) Sensitivity: ${String.format("%.1f", rotationSensitivityX)}")
+                            Text("X-axis (↕️ Vertical) Sensitivity: ${String.format("%.2f", rotationSensitivityX)}")
                             Slider(
                                 value = rotationSensitivityX,
                                 onValueChange = { rotationSensitivityX = it },
-                                valueRange = 0.5f..8.0f,
-                                steps = 14
+                                valueRange = 0.1f..2.0f,
+                                steps = 18
                             )
                             
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Higher values = faster rotation",
+                                text = "🔄 Now supports smooth 360° rotation with velocity damping",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     },
@@ -603,8 +629,8 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     placeholder = when {
-                        selectedNode != null -> "Selected: ${selectedNode?.name} - Drag to rotate..."
-                        modelsCount > 0 -> "Tap cats to rotate (↔️ Y-axis, ↕️ X-axis), tap empty space to place new cats..."
+                        selectedNode != null -> "Selected: ${selectedNode?.name} - Smooth 360° rotation enabled..."
+                        modelsCount > 0 -> "Tap cats for smooth 360° rotation, tap empty space to place new cats..."
                         else -> "Tap anywhere to place cats..."
                     },
                     isLoading = isLoading
@@ -614,9 +640,25 @@ class MainActivity : ComponentActivity() {
     }
     
     /**
-     * Handle touch down event
+     * 重置旋轉狀態
      */
-    private fun handleTouchDown(
+    private fun resetRotationState() {
+        selectedNode = null
+        isRotating = false
+        accumulatedRotationX = 0f
+        accumulatedRotationY = 0f
+        velocityX = 0f
+        velocityY = 0f
+        targetRotationX = 0f
+        targetRotationY = 0f
+        currentRotationX = 0f
+        currentRotationY = 0f
+    }
+    
+    /**
+     * 改善的觸摸按下處理
+     */
+    private fun handleImprovedTouchDown(
         motionEvent: MotionEvent,
         hitResult: HitResult?,
         frame: Frame?,
@@ -629,105 +671,150 @@ class MainActivity : ComponentActivity() {
         lastTouchY = motionEvent.y
         touchStartX = motionEvent.x
         touchStartY = motionEvent.y
+        lastMoveTime = System.currentTimeMillis()
         
-        // Check if touching an existing model for rotation
+        // 檢查是否觸摸到現有模型
         val touchedModel = findTouchedModel(motionEvent.x, motionEvent.y)
         if (touchedModel != null) {
-            Log.d(TAG, "🎯 Model selected for rotation: ${touchedModel.name}")
+            Log.d(TAG, "🎯 Model selected for smooth rotation: ${touchedModel.name}")
             selectedNode = touchedModel
             isRotating = false
             
-            // 記錄當前的旋轉值作為起始點
-            rotationStartX = touchedModel.rotation.x
-            rotationStartY = touchedModel.rotation.y
+            // 初始化該模型的累積旋轉值
+            val currentRotation = touchedModel.rotation
+            accumulatedRotationX = currentRotation.x
+            accumulatedRotationY = currentRotation.y
             
-            arRenderer.planeDetectionStatus.value = "Cat selected: ${touchedModel.name} - Drag to rotate!"
+            // 設置目標和當前旋轉
+            targetRotationX = accumulatedRotationX
+            targetRotationY = accumulatedRotationY
+            currentRotationX = accumulatedRotationX
+            currentRotationY = accumulatedRotationY
+            
+            // 重置速度
+            velocityX = 0f
+            velocityY = 0f
+            
+            arRenderer.planeDetectionStatus.value = "Cat selected: ${touchedModel.name} - Smooth 360° rotation ready!"
             return
         }
         
-        // If no model touched, place new model
+        // 如果沒有觸摸到模型，放置新模型
         kotlinx.coroutines.runBlocking {
             placeCatAtTouch(motionEvent, frame, session, modelLoader, childNodes, engine)
         }
     }
     
     /**
-     * Handle touch move event for dual-axis rotation
+     * 改善的觸摸移動處理 - 支持360度旋轉和速度阻尼
      */
-    private fun handleTouchMove(motionEvent: MotionEvent) {
+    private fun handleImprovedTouchMove(motionEvent: MotionEvent) {
         selectedNode?.let { node ->
-            val deltaX = motionEvent.x - touchStartX  // 水平移動距離
-            val deltaY = motionEvent.y - touchStartY  // 垂直移動距離
-            val totalDistance = kotlin.math.sqrt(deltaX * deltaX + deltaY * deltaY)
+            val currentTime = System.currentTimeMillis()
+            val deltaTime = (currentTime - lastMoveTime).coerceAtLeast(1L)
             
-            // Only rotate if movement is significant enough
+            val deltaX = motionEvent.x - lastTouchX
+            val deltaY = motionEvent.y - lastTouchY
+            val totalDistance = sqrt(deltaX * deltaX + deltaY * deltaY)
+            
+            // 只有移動距離足夠時才旋轉
             if (totalDistance > MIN_ROTATION_DISTANCE) {
                 if (!isRotating) {
                     isRotating = true
-                    Log.d(TAG, "🔄 Started dual-axis rotating: ${node.name}")
+                    Log.d(TAG, "🔄 Started smooth 360° rotation: ${node.name}")
                 }
                 
-                // 計算雙軸旋轉
-                // 水平移動控制Y軸旋轉（左右轉頭）
-                val rotationDeltaY = deltaX * rotationSensitivityY
-                val newRotationY = (rotationStartY + rotationDeltaY) % 360f
+                // 計算速度（像素/毫秒）
+                val newVelocityX = deltaX / deltaTime.toFloat()
+                val newVelocityY = deltaY / deltaTime.toFloat()
                 
-                // 垂直移動控制X軸旋轉（上下點頭），限制角度範圍
-                val rotationDeltaX = -deltaY * rotationSensitivityX  // 負號讓向上拖拽向上旋轉
-                var newRotationX = rotationStartX + rotationDeltaX
+                // 應用速度阻尼
+                velocityX = velocityX * VELOCITY_DAMPING + newVelocityX * (1f - VELOCITY_DAMPING)
+                velocityY = velocityY * VELOCITY_DAMPING + newVelocityY * (1f - VELOCITY_DAMPING)
                 
-                // 限制X軸旋轉範圍，避免過度翻轉
-                newRotationX = newRotationX.coerceIn(-90f, 90f)
+                // 計算旋轉增量（累積，支持超過360度）
+                val rotationDeltaY = velocityX * rotationSensitivityY * deltaTime
+                val rotationDeltaX = -velocityY * rotationSensitivityX * deltaTime // 負號讓向上拖拽向上旋轉
                 
-                // 應用旋轉
-                node.rotation = Rotation(x = newRotationX, y = newRotationY, z = 0f)
+                // 更新累積旋轉值（不限制在0-360度範圍內）
+                accumulatedRotationX += rotationDeltaX
+                accumulatedRotationY += rotationDeltaY
                 
-                // 判斷主要旋轉方向並顯示對應信息
-                val rotationInfo = when {
-                    kotlin.math.abs(deltaX) > kotlin.math.abs(deltaY) * 1.5f -> {
-                        "Y-axis: ${String.format("%.1f", newRotationY)}°"
-                    }
-                    kotlin.math.abs(deltaY) > kotlin.math.abs(deltaX) * 1.5f -> {
-                        "X-axis: ${String.format("%.1f", newRotationX)}°"
-                    }
-                    else -> {
-                        "X: ${String.format("%.1f", newRotationX)}°, Y: ${String.format("%.1f", newRotationY)}°"
-                    }
-                }
+                // 更新目標旋轉
+                targetRotationX = accumulatedRotationX
+                targetRotationY = accumulatedRotationY
                 
-                Log.d(TAG, "🔄 Rotating ${node.name} - X: $newRotationX°, Y: $newRotationY°")
-                arRenderer.planeDetectionStatus.value = "Rotating ${node.name} - $rotationInfo"
+                Log.d(TAG, "🔄 Smooth rotating ${node.name} - AccumX: ${String.format("%.1f", accumulatedRotationX)}°, AccumY: ${String.format("%.1f", accumulatedRotationY)}°")
                 
-                // 更新最後觸摸位置
+                // 顯示旋轉信息
+                val rotationInfo = "X: ${String.format("%.1f", accumulatedRotationX)}°, Y: ${String.format("%.1f", accumulatedRotationY)}°"
+                arRenderer.planeDetectionStatus.value = "Smooth rotating ${node.name} - $rotationInfo"
+                
+                // 更新觸摸位置和時間
                 lastTouchX = motionEvent.x
                 lastTouchY = motionEvent.y
+                lastMoveTime = currentTime
             }
         }
     }
     
     /**
-     * Handle touch up event
+     * 改善的觸摸釋放處理
      */
-    private fun handleTouchUp() {
+    private fun handleImprovedTouchUp() {
         if (isRotating && selectedNode != null) {
-            Log.d(TAG, "✅ Rotation completed for: ${selectedNode?.name}")
-            arRenderer.planeDetectionStatus.value = "Rotation completed! Tap cat to rotate or tap empty space to place new cat"
+            Log.d(TAG, "✅ Smooth rotation completed for: ${selectedNode?.name}")
+            arRenderer.planeDetectionStatus.value = "Smooth rotation completed! Total X: ${String.format("%.1f", accumulatedRotationX)}°, Y: ${String.format("%.1f", accumulatedRotationY)}°"
+            
+            // 不重置選中的節點，允許繼續操作
             isRotating = false
+            
+            // 逐漸減速
+            velocityX *= 0.5f
+            velocityY *= 0.5f
         }
     }
     
     /**
-     * Find touched model based on screen coordinates (simplified approach)
+     * 平滑旋轉更新 - 使用插值實現平滑效果
+     */
+    private fun updateSmoothRotation() {
+        selectedNode?.let { node ->
+            // 使用線性插值平滑過渡到目標旋轉
+            currentRotationX += (targetRotationX - currentRotationX) * SMOOTH_FACTOR
+            currentRotationY += (targetRotationY - currentRotationY) * SMOOTH_FACTOR
+            
+            // 將累積旋轉轉換為實際可用的旋轉值（標準化到0-360度用於顯示）
+            val normalizedX = currentRotationX % 360f
+            val normalizedY = currentRotationY % 360f
+            
+            // 應用旋轉到節點
+            node.rotation = Rotation(x = normalizedX, y = normalizedY, z = 0f)
+            
+            // 如果有慣性速度，繼續旋轉
+            if (!isRotating && (abs(velocityX) > MIN_VELOCITY_THRESHOLD || abs(velocityY) > MIN_VELOCITY_THRESHOLD)) {
+                // 應用慣性旋轉
+                accumulatedRotationX += velocityX * rotationSensitivityX * 16f // 16ms per frame
+                accumulatedRotationY += velocityY * rotationSensitivityY * 16f
+                
+                targetRotationX = accumulatedRotationX
+                targetRotationY = accumulatedRotationY
+                
+                // 減慢慣性速度
+                velocityX *= 0.95f
+                velocityY *= 0.95f
+            }
+        }
+    }
+    
+    /**
+     * Find touched model based on screen coordinates
      */
     private fun findTouchedModel(screenX: Float, screenY: Float): ModelNode? {
         // Simplified model detection - check all placed models
         for (modelNode in placedModelNodes) {
             try {
-                // Simple distance-based check (you could implement more sophisticated hit testing)
-                // For now, we'll use a proximity-based approach
-                // This is a simplified implementation - in production you'd want proper ray casting
-                
-                // For demo purposes, return the most recently placed model if touch is in center area
+                // Simple distance-based check
                 if (screenX > 200f && screenX < 800f && screenY > 400f && screenY < 1600f) {
                     return placedModelNodes.lastOrNull()
                 }
@@ -843,7 +930,7 @@ class MainActivity : ComponentActivity() {
                 
                 arRenderer.placedModelsCount.value++
                 Log.d(TAG, "🎉 Cat #${arRenderer.placedModelsCount.value} placed: ${modelNode.name}")
-                arRenderer.planeDetectionStatus.value = "Cat #${arRenderer.placedModelsCount.value} placed! Tap it to rotate"
+                arRenderer.planeDetectionStatus.value = "Cat #${arRenderer.placedModelsCount.value} placed! Tap it for smooth 360° rotation"
                 true
             } else {
                 Log.e(TAG, "❌ Model instance creation failed")
@@ -860,36 +947,43 @@ class MainActivity : ComponentActivity() {
             when (message.lowercase()) {
                 "help" -> {
                     "🐱 Tap screen to place cats in AR!\n" +
-                    "🔄 Tap any cat then drag to rotate:\n" +
-                    "   ↔️ Drag horizontally for Y-axis rotation\n" +
-                    "   ↕️ Drag vertically for X-axis rotation\n" +
+                    "🔄 Tap any cat then drag for smooth 360° rotation:\n" +
+                    "   ↔️ Horizontal drag for Y-axis rotation\n" +
+                    "   ↕️ Vertical drag for X-axis rotation\n" +
+                    "   🌟 NEW: Supports unlimited rotation with velocity damping!\n" +
                     "🗑️ Use 'clear' to remove all cats"
                 }
                 "rotation", "rotate" -> {
                     if (arRenderer.placedModelsCount.value > 0) {
-                        "🔄 Tap any of the ${arRenderer.placedModelsCount.value} cats to select it, then:\n" +
-                        "↔️ Drag horizontally to rotate around Y-axis (left/right)\n" +
-                        "↕️ Drag vertically to rotate around X-axis (up/down)\n" +
-                        "You can combine both movements for dual-axis rotation!"
+                        "🔄 Tap any of the ${arRenderer.placedModelsCount.value} cats to select it for smooth rotation:\n" +
+                        "✨ New Features:\n" +
+                        "• 360° unlimited rotation (can spin multiple times)\n" +
+                        "• Velocity damping for smooth motion\n" +
+                        "• Inertial rotation after releasing touch\n" +
+                        "• Accumulated rotation tracking\n" +
+                        "Drag slowly for precise control!"
                     } else {
-                        "🐱 Place some cats first, then you can tap and drag to rotate them!"
+                        "🐱 Place some cats first, then enjoy smooth 360° rotation!"
                     }
                 }
                 "clear" -> {
-                    selectedNode = null
-                    isRotating = false
+                    resetRotationState()
                     "All cats cleared! 🗑️"
                 }
                 "speed", "sensitivity" -> {
-                    "🎛️ Current rotation sensitivity:\n" +
-                    "↔️ Y-axis (horizontal): ${String.format("%.1f", rotationSensitivityY)}\n" +
-                    "↕️ X-axis (vertical): ${String.format("%.1f", rotationSensitivityX)}\n" +
-                    "Tap the Settings button in the control panel to adjust!"
+                    "🎛️ Current rotation sensitivity (lower = smoother):\n" +
+                    "↔️ Y-axis (horizontal): ${String.format("%.2f", rotationSensitivityY)}\n" +
+                    "↕️ X-axis (vertical): ${String.format("%.2f", rotationSensitivityX)}\n" +
+                    "🌟 Features: Velocity damping, smooth interpolation, 360° support\n" +
+                    "Tap Settings to adjust!"
                 }
                 "debug" -> {
                     "Debug: ${arRenderer.placedModelsCount.value} cats placed\n" +
                     "Selected: ${selectedNode?.name ?: "None"}\n" +
                     "Rotating: $isRotating\n" +
+                    "Accumulated X: ${String.format("%.1f", accumulatedRotationX)}°\n" +
+                    "Accumulated Y: ${String.format("%.1f", accumulatedRotationY)}°\n" +
+                    "Velocity X: ${String.format("%.3f", velocityX)}, Y: ${String.format("%.3f", velocityY)}\n" +
                     "Sensitivity Y: $rotationSensitivityY, X: $rotationSensitivityX"
                 }
                 else -> {
@@ -897,7 +991,7 @@ class MainActivity : ComponentActivity() {
                     if (result.success && result.response.isNotEmpty()) {
                         result.response
                     } else {
-                        "Meow~ Try tapping a cat and dragging to rotate it! 🐱"
+                        "Meow~ Try the new smooth 360° rotation! Tap a cat and drag slowly for precise control! 🐱✨"
                     }
                 }
             }
