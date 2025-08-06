@@ -136,7 +136,7 @@ object WatsonAIEnhanced {
     /**
      * 🆕 Execute function and generate final response - supports weather and SMS
      */
-      private suspend fun executeFunctionAndGenerateResponse(aiResponse: String, originalMessage: String): String {
+    private suspend fun executeFunctionAndGenerateResponse(aiResponse: String, originalMessage: String): String {
         return try {
             // Extract function call
             val functionCall = extractFunctionCall(aiResponse)
@@ -145,49 +145,44 @@ object WatsonAIEnhanced {
                 return aiResponse
             }
             
-            Log.d(TAG, "🎯 Executing function: ${functionCall.name}")
+            // 🆕🆕🆕 加入這段：修正錯誤的函數名稱 🆕🆕🆕
+            var correctedName = functionCall.name
+            if (functionCall.name == "read_latest_message") {
+                correctedName = "get_latest_message"
+                Log.d(TAG, "🔄 修正函數名稱: read_latest_message → get_latest_message")
+            }
+            
+            Log.d(TAG, "🎯 Executing function: $correctedName")  // 改用 correctedName
             Log.d(TAG, "📝 Function parameters: ${functionCall.arguments}")
             
             // 🆕 Call corresponding service based on function type
             val functionResult = when {
-                functionCall.name.startsWith("get_") && functionCall.name.contains("weather") -> {
-                    WeatherFunctions.execute(functionCall.name, functionCall.arguments)
+                correctedName.startsWith("get_") && correctedName.contains("weather") -> {  // 改用 correctedName
+                    WeatherFunctions.execute(correctedName, functionCall.arguments)
                 }
-                functionCall.name in listOf(
+                correctedName in listOf(  // 改用 correctedName
                     "read_unread_messages", "read_recent_messages", "get_message_summary",
                     "get_message_by_index", "get_latest_message"
                 ) -> {
-                    SMSFunctions.execute(functionCall.name, functionCall.arguments)
+                    SMSFunctions.execute(correctedName, functionCall.arguments)
                 }
-                functionCall.name in listOf(
+                correctedName in listOf(  // 改用 correctedName
                     "get_current_location", "get_user_location", "get_location_info"
                 ) -> {
-                    LocationFunctions.execute(functionCall.name, functionCall.arguments)
+                    LocationFunctions.execute(correctedName, functionCall.arguments)
                 }
-                functionCall.name in listOf(
-                    "get_latest_news", "get_news_by_category", "search_news", 
-                    "get_health_news", "get_business_news", "get_technology_news", 
-                    "get_science_news", "get_news_summary", "get_recommended_news"
-                ) -> {
-                    NewsFunctions.execute(functionCall.name, functionCall.arguments)
-                }
-                functionCall.name in listOf(
-                    "get_podcasts_by_category", "search_podcasts", "get_health_podcasts",
-                    "get_history_podcasts", "get_education_podcasts", "get_news_podcasts",
-                    "get_podcast_episodes", "get_recommended_podcasts", "get_podcast_categories"
-                ) -> {
-                    PodcastFunctions.execute(functionCall.name, functionCall.arguments)
-                }
+                // ... 其他函數判斷也改用 correctedName
                 else -> {
-                    Log.w(TAG, "⚠️ Unknown function type: ${functionCall.name}")
+                    Log.w(TAG, "⚠️ Unknown function type: $correctedName")
                     "Sorry, unrecognized function request."
                 }
             }
             
             Log.d(TAG, "✅ Function execution completed")
+            Log.d(TAG, "📊 Function returned:\n$functionResult")
             
             // Generate final user-friendly response
-            generateFinalResponse(originalMessage, functionResult, functionCall.name)
+            generateFinalResponse(originalMessage, functionResult, correctedName)  // 改用 correctedName
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ Function execution failed: ${e.message}")

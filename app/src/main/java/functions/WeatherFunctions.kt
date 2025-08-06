@@ -41,7 +41,16 @@ object WeatherFunctions {
         
         return try {
             when (functionName) {
-                "get_current_weather" -> executeCurrentWeather()
+                "get_current_weather" -> {
+                    // 🆕 檢查是否有城市參數
+                    if (arguments != "{}" && arguments.isNotBlank()) {
+                        // 有參數 = 查詢指定城市
+                        executeCityWeather(arguments)
+                    } else {
+                        // 沒參數 = 查詢當前位置
+                        executeCurrentWeather()
+                    }
+                }
                 "get_weather_by_city" -> executeCityWeather(arguments)
                 else -> {
                     Log.w(TAG, "⚠️ Unknown weather function: $functionName")
@@ -52,7 +61,7 @@ object WeatherFunctions {
             Log.e(TAG, "❌ Weather function execution failed: ${e.message}")
             "Error: Weather data retrieval failed - ${e.message}"
         }
-    }
+}
     
     /**
      * Execute current location weather query
@@ -91,8 +100,10 @@ object WeatherFunctions {
             // Try to parse JSON format parameters
             if (arguments.trim().startsWith("{")) {
                 val jsonArgs = Json.parseToJsonElement(arguments).jsonObject
+                // 🆕 檢查 "city" 或 "location" 字段
                 jsonArgs["city"]?.jsonPrimitive?.content
-                    ?: throw IllegalArgumentException("City field not found in parameters")
+                    ?: jsonArgs["location"]?.jsonPrimitive?.content  // 🆕 也檢查 location
+                    ?: throw IllegalArgumentException("City/Location field not found in parameters")
             } else {
                 // If not JSON, treat as city name directly
                 arguments.trim()
@@ -119,7 +130,7 @@ object WeatherFunctions {
         Log.d(TAG, "✅ City weather query completed")
         return result
     }
-    
+        
     /**
      * Test weather service connection
      */

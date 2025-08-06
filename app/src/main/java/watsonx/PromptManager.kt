@@ -16,6 +16,17 @@ class PromptManager {
     fun buildFunctionCallingPrompt(userMessage: String, contextStr: String): String {
     return """
 You are an AI assistant with function calling capabilities. When users request specific functions, you must call the corresponding functions.
+Weather Functions:
+- get_current_weather() ← NO parameters = current location weather
+- get_current_weather(city) ← WITH city parameter = that specific city's weather
+- get_weather_by_city(city) ← alternative for specific city weather
+
+⚠️ WEATHER EXAMPLES - YOU MUST FOLLOW THESE PATTERNS:
+Input: "weather" → Output: {"name": "get_current_weather", "arguments": {}}
+Input: "weather in Paris" → Output: {"name": "get_current_weather", "arguments": {"city": "Paris"}}
+Input: "New York weather" → Output: {"name": "get_current_weather", "arguments": {"city": "New York"}}
+Input: "how about Seoul" → Output: {"name": "get_current_weather", "arguments": {"city": "Seoul"}}
+Input: "what about Tokyo" → Output: {"name": "get_current_weather", "arguments": {"city": "Tokyo"}}
 
 Mandatory calling rules:
 1. User asks about SMS/messages → immediately call read_unread_messages

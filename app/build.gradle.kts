@@ -6,7 +6,6 @@ plugins {
     kotlin("plugin.serialization") version "2.0.21"
 }
 
-
 android {
     namespace = "com.example.ibm_project"
     compileSdk = 35
@@ -84,12 +83,18 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("androidx.fragment:fragment-ktx:1.6.2")
 
-    // Compose
+    // Compose BOM 和核心依賴 - 使用 BOM 統一管理版本
     implementation(platform("androidx.compose:compose-bom:2024.02.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material")  // Material 2
+    implementation("androidx.compose.runtime:runtime")
+    implementation("androidx.compose.runtime:runtime-livedata")
     implementation("androidx.activity:activity-compose:1.8.2")
+    
+    // ===== Material Icons - 讓 BOM 管理版本 =====
+    implementation("androidx.compose.material:material-icons-extended")  // 移除版本號，讓 BOM 控制
 
     // ===== 網路 API 依賴 =====
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
@@ -105,9 +110,11 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-
+    implementation("io.github.sceneview:sceneview:2.3.0")
+    implementation("io.github.sceneview:arsceneview:2.3.0")
     // 協程
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 
     // 數學運算 (3D 計算)
     implementation("dev.romainguy:kotlin-math:1.5.3")
@@ -115,19 +122,11 @@ dependencies {
     // 權限處理
     implementation("pub.devrel:easypermissions:3.0.0")
 
+    // 序列化
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+
     // 測試依賴
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-
-        implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-
-
-
-
-
-
 }
