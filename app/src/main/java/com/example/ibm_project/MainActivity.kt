@@ -38,8 +38,6 @@ import ui.components.UserInputField
 import watsonx.WatsonAIEnhanced
 import ar.ARSceneViewRenderer
 import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.sin
 import kotlin.math.sqrt
 
 // SceneView 2.3.0 imports
@@ -116,6 +114,9 @@ class MainActivity : ComponentActivity() {
     
     // Store all placed model nodes for interaction
     private val placedModelNodes = mutableListOf<ModelNode>()
+    
+    // 為每個模型存儲累積旋轉值
+    private val modelRotationMap = mutableMapOf<String, Pair<Float, Float>>()
     
     // Permission launcher
     private val permissionLauncher = registerForActivityResult(
@@ -653,6 +654,7 @@ class MainActivity : ComponentActivity() {
         targetRotationY = 0f
         currentRotationX = 0f
         currentRotationY = 0f
+        modelRotationMap.clear() // 清除所有模型的旋轉記錄
     }
     
     /**
@@ -680,10 +682,24 @@ class MainActivity : ComponentActivity() {
             selectedNode = touchedModel
             isRotating = false
             
-            // 初始化該模型的累積旋轉值
-            val currentRotation = touchedModel.rotation
-            accumulatedRotationX = currentRotation.x
-            accumulatedRotationY = currentRotation.y
+            // 從存儲的映射中獲取該模型的累積旋轉值，而不是從節點的當前旋轉
+            val modelName = touchedModel.name ?: "unknown"
+            val storedRotation = modelRotationMap[modelName]
+            
+            if (storedRotation != null) {
+                // 使用存儲的累積旋轉值
+                accumulatedRotationX = storedRotation.first
+                accumulatedRotationY = storedRotation.second
+                Log.d(TAG, "📋 Restored rotation for $modelName - X: ${accumulatedRotationX}°, Y: ${accumulatedRotationY}°")
+            } else {
+                // 第一次選中此模型，從當前旋轉初始化
+                val currentRotation = touchedModel.rotation
+                accumulatedRotationX = currentRotation.x
+                accumulatedRotationY = currentRotation.y
+                // 存儲初始值
+                modelRotationMap[modelName] = Pair(accumulatedRotationX, accumulatedRotationY)
+                Log.d(TAG, "🆕 New model rotation tracking for $modelName - X: ${accumulatedRotationX}°, Y: ${accumulatedRotationY}°")
+            }
             
             // 設置目標和當前旋轉
             targetRotationX = accumulatedRotationX
@@ -791,6 +807,10 @@ class MainActivity : ComponentActivity() {
             // 應用旋轉到節點
             node.rotation = Rotation(x = normalizedX, y = normalizedY, z = 0f)
             
+            // 持續更新該模型的累積旋轉值到映射中
+            val modelName = node.name ?: "unknown"
+            modelRotationMap[modelName] = Pair(currentRotationX, currentRotationY)
+            
             // 如果有慣性速度，繼續旋轉
             if (!isRotating && (abs(velocityX) > MIN_VELOCITY_THRESHOLD || abs(velocityY) > MIN_VELOCITY_THRESHOLD)) {
                 // 應用慣性旋轉
@@ -803,6 +823,9 @@ class MainActivity : ComponentActivity() {
                 // 減慢慣性速度
                 velocityX *= 0.95f
                 velocityY *= 0.95f
+                
+                // 更新映射中的累積值
+                modelRotationMap[modelName] = Pair(accumulatedRotationX, accumulatedRotationY)
             }
         }
     }

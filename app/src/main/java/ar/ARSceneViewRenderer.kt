@@ -182,9 +182,9 @@ class ARSceneViewRenderer {
      */
     fun isReadyForPlacement(): Boolean {
         return canPlaceObjects.value && 
-               trackingStatus.value.contains("Ready", ignoreCase = true) ||
-               trackingStatus.value.contains("Normal", ignoreCase = true) ||
-               trackingStatus.value.contains("Excellent", ignoreCase = true)
+               (trackingStatus.value.contains("Ready", ignoreCase = true) ||
+                trackingStatus.value.contains("Normal", ignoreCase = true) ||
+                trackingStatus.value.contains("Excellent", ignoreCase = true))
     }
     
     /**
