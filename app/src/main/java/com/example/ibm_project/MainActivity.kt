@@ -46,6 +46,7 @@ import io.github.sceneview.rememberCollisionSystem
 import io.github.sceneview.collision.HitResult
 import io.github.sceneview.math.Position
 import io.github.sceneview.utils.worldToScreen
+import io.github.sceneview.node.ModelNode
 
 // ARScene imports
 import io.github.sceneview.ar.ARScene
@@ -54,6 +55,7 @@ import io.github.sceneview.ar.rememberARCameraStream
 
 /**
  * AR Cat Interaction App - Watson dialog bound to first cat
+ * 使用 SceneView 2.3.0 正確的碰撞檢測系統
  */
 class MainActivity : ComponentActivity() {
 
@@ -169,12 +171,12 @@ class MainActivity : ComponentActivity() {
         val trackingStatus = arRenderer.trackingStatus.value
         val planeStatus = arRenderer.planeDetectionStatus.value
         
-        // SceneView initialization
+        // 🔥 SceneView 2.3.0 initialization
         val engine = rememberEngine()
         val modelLoader = rememberModelLoader(engine)
         val materialLoader = rememberMaterialLoader(engine)
         val view = rememberView(engine)
-        val collisionSystem = rememberCollisionSystem(view)
+        val collisionSystem = rememberCollisionSystem(view) // 🔥 正確的碰撞系統
         val childNodes = rememberNodes()
         val cameraNode = rememberARCameraNode(engine)
         
@@ -252,7 +254,7 @@ class MainActivity : ComponentActivity() {
         }
 
         Box(modifier = Modifier.fillMaxSize()) {
-            // Main AR View
+            // Main AR View with SceneView 2.3.0 collision detection
             ARScene(
                 modifier = Modifier.fillMaxSize(),
                 childNodes = childNodes,
@@ -261,7 +263,7 @@ class MainActivity : ComponentActivity() {
                 modelLoader = modelLoader,
                 materialLoader = materialLoader,
                 cameraNode = cameraNode,
-                collisionSystem = collisionSystem,
+                collisionSystem = collisionSystem, // 🔥 確保傳遞 collisionSystem
                 activity = context as ComponentActivity,
                 lifecycle = lifecycle,
                 
@@ -298,7 +300,8 @@ class MainActivity : ComponentActivity() {
                 onTouchEvent = { motionEvent: MotionEvent, hitResult: HitResult? ->
                     when (motionEvent.action) {
                         MotionEvent.ACTION_DOWN -> {
-                            touchHandler.handleImprovedTouchDown(
+                            // 🔥 使用修正後的 SceneView 2.3.0 觸摸處理
+                            touchHandler.handleSceneViewTouchDown(
                                 motionEvent = motionEvent,
                                 hitResult = hitResult,
                                 frame = frame,
@@ -307,11 +310,11 @@ class MainActivity : ComponentActivity() {
                                 childNodes = childNodes,
                                 engine = engine,
                                 arRenderer = arRenderer,
-                                onFirstCatCreated = { newFirstCat ->
-                                    Log.d(TAG, "First cat created for dialog binding: ${newFirstCat?.name}")
-                                },
-                                sceneView = null,        // 邊緣檢測參數
-                                filamentView = view      // 邊緣檢測參數
+                                collisionSystem = collisionSystem, // 🔥 傳遞 collisionSystem
+                                cameraNode = cameraNode, // 🔥 傳遞 cameraNode
+                                onFirstCatCreated = { newFirstCat: ModelNode? ->
+                                    Log.d(TAG, "First cat created for dialog binding: ${newFirstCat?.name ?: "unknown"}")
+                                }
                             )
                         }
                         MotionEvent.ACTION_MOVE -> {
@@ -324,6 +327,7 @@ class MainActivity : ComponentActivity() {
                     true
                 }
             )
+            
             // Watson Dialog - bound to first cat, wider dialog
             dialogTracker.WatsonDialogBoundToFirstCat(
                 isChatVisible = isChatVisible,
@@ -340,7 +344,7 @@ class MainActivity : ComponentActivity() {
                 hasFirstCat = hasFirstCat
             )
         
-            // Control panel
+            // Control panel with updated status messages
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -361,7 +365,7 @@ class MainActivity : ComponentActivity() {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "AR Mode + Wider Dialog",
+                            text = "AR Mode + Simplified Collision", // 🔥 更新標題
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleMedium
                         )
@@ -422,7 +426,7 @@ class MainActivity : ComponentActivity() {
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "$modelsCount Cats" + if (touchHandler.getFirstCatModel() != null) " (Wide Dialog)" else "",
+                                text = "$modelsCount Cats" + if (touchHandler.getFirstCatModel() != null) " (Simplified)" else "",
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
@@ -473,11 +477,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
             
-            // Settings Dialog
+            // Settings Dialog with updated information
             if (showSettings) {
                 AlertDialog(
                     onDismissRequest = { showSettings = false },
-                    title = { Text("Rotation Settings") },
+                    title = { Text("Simplified Collision Settings") },
                     text = {
                         Column {
                             Text("Adjust rotation sensitivity (lower = smoother):")
@@ -506,7 +510,7 @@ class MainActivity : ComponentActivity() {
                             
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Watson wider dialog with smart positioning and reduced updates",
+                                text = "使用簡化的距離檢測方法，穩定可靠", // 🔥 更新說明
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -587,6 +591,7 @@ class MainActivity : ComponentActivity() {
                 "help" -> {
                     "Tap screen to place cats in AR!\n" +
                     "Tap any cat then drag for smooth 360 degree rotation\n" +
+                    "Simplified collision detection prevents overlapping\n" +
                     "Watson wide dialog follows first cat with smart positioning\n" +
                     "Use 'clear' to remove all cats and reset"
                 }
@@ -598,7 +603,7 @@ class MainActivity : ComponentActivity() {
                     if (result.success && result.response.isNotEmpty()) {
                         result.response
                     } else {
-                        "Meow~ Watson wide dialog is bound to the first cat!"
+                        "Meow~ Watson wide dialog is bound to the first cat with simplified collision detection!"
                     }
                 }
             }
