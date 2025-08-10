@@ -8,6 +8,7 @@ import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -15,9 +16,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -45,10 +43,9 @@ import watsonx.WatsonAIEnhanced
 import ar.ARSceneViewRenderer
 import ar.ARTouchHandler
 import ar.ARDialogTracker
-import ar.PlacementModeManager // ✅ 新增：模式管理器
-import ar.PlacementModeToggleButton // ✅ 新增：模式切換按鈕
+import ar.PlacementModeManager
 import kotlin.math.roundToInt
-import androidx.compose.foundation.BorderStroke
+
 // SceneView 2.3.0 imports
 import io.github.sceneview.rememberEngine
 import io.github.sceneview.rememberModelLoader
@@ -68,9 +65,8 @@ import io.github.sceneview.ar.rememberARCameraNode
 import io.github.sceneview.ar.rememberARCameraStream
 
 /**
- * AR Cat Interaction App - Watson dialog bound to first cat
- * 基於你的原始設計，添加 PlacementModeManager 的模式切換功能
- * 保持原本的觸摸處理邏輯和碰撞檢測系統
+ * AR Cat Interaction App - 简化版UI设计
+ * 包含模式切换和平面数据清除功能
  */
 class MainActivity : ComponentActivity() {
 
@@ -82,7 +78,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var arRenderer: ARSceneViewRenderer
     private lateinit var touchHandler: ARTouchHandler
     private lateinit var dialogTracker: ARDialogTracker
-    private lateinit var placementModeManager: PlacementModeManager // ✅ 新增：模式管理器
+    private lateinit var placementModeManager: PlacementModeManager
     
     // Permission launcher
     private val permissionLauncher = registerForActivityResult(
@@ -99,9 +95,9 @@ class MainActivity : ComponentActivity() {
         arRenderer = ARSceneViewRenderer()
         touchHandler = ARTouchHandler()
         dialogTracker = ARDialogTracker()
-        placementModeManager = PlacementModeManager(this) // ✅ 新增：初始化模式管理器
+        placementModeManager = PlacementModeManager(this)
         
-        // ✅ 新增：整合 Handler 和 Manager
+        // 整合组件
         placementModeManager.setARTouchHandler(touchHandler)
         
         // Request necessary permissions
@@ -197,7 +193,7 @@ class MainActivity : ComponentActivity() {
         val trackingStatus = arRenderer.trackingStatus.value
         val planeStatus = arRenderer.planeDetectionStatus.value
         
-        // ✅ 新增：獲取當前模式
+        // 获取当前模式
         val currentMode by placementModeManager.currentMode
         
         // SceneView 2.3.0 initialization
@@ -255,18 +251,14 @@ class MainActivity : ComponentActivity() {
                         if (distance > 10f) {
                             firstCatDialogPosition = newPosition
                             hasFirstCat = true
-                            Log.d(TAG, "First cat dialog position updated: screenPos=(${screenPos.x}, ${screenPos.y})")
                         } else if (!hasFirstCat) {
                             firstCatDialogPosition = newPosition
                             hasFirstCat = true
-                            Log.d(TAG, "First cat dialog position initialized: screenPos=(${screenPos.x}, ${screenPos.y})")
                         }
                     } else {
-                        Log.w(TAG, "Cat position off screen: Y=${screenPos.y}")
                         hasFirstCat = false
                     }
                 } catch (e: Exception) {
-                    Log.w(TAG, "Error updating first cat dialog position: ${e.message}")
                     hasFirstCat = false
                 }
             } ?: run {
@@ -285,7 +277,7 @@ class MainActivity : ComponentActivity() {
                     focusManager.clearFocus()
                 }
         ) {
-            // Main AR View - 保持你的原始設計
+            // Main AR View
             ARScene(
                 modifier = Modifier.fillMaxSize(),
                 childNodes = childNodes,
@@ -308,7 +300,6 @@ class MainActivity : ComponentActivity() {
                 onSessionCreated = { arSession ->
                     session = arSession
                     arRenderer.onSessionCreated(arSession)
-                    // ✅ 新增：讓 Manager 知道 Session
                     placementModeManager.setSession(arSession)
                 },
                 
@@ -330,17 +321,13 @@ class MainActivity : ComponentActivity() {
                     arRenderer.onSessionUpdated(arSession, updatedFrame)
                 },
                 
-                // ✅ 保持你的原始觸摸處理方式
                 onTouchEvent = { motionEvent: MotionEvent, hitResult: HitResult? ->
                     when (motionEvent.action) {
                         MotionEvent.ACTION_DOWN -> {
-                            // Clear input focus
                             focusManager.clearFocus()
                             
-                            // ✅ 新增：讓 Manager 知道當前 Session（用於配置平面檢測）
                             placementModeManager.setSession(session)
                             
-                            // ✅ 保持你的原始觸摸處理：直接調用 Handler
                             touchHandler.handleSceneViewTouchDown(
                                 motionEvent = motionEvent,
                                 hitResult = hitResult,
@@ -350,10 +337,10 @@ class MainActivity : ComponentActivity() {
                                 childNodes = childNodes,
                                 engine = engine,
                                 arRenderer = arRenderer,
-                                collisionSystem = collisionSystem, // ✅ 直接可用
-                                cameraNode = cameraNode, // ✅ 直接可用
+                                collisionSystem = collisionSystem,
+                                cameraNode = cameraNode,
                                 onFirstCatCreated = { newFirstCat: ModelNode? ->
-                                    Log.d(TAG, "First cat created for dialog binding: ${newFirstCat?.name ?: "unknown"}")
+                                    Log.d(TAG, "First cat created: ${newFirstCat?.name ?: "unknown"}")
                                 }
                             )
                         }
@@ -460,7 +447,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             } else if (isChatVisible && chatMessage.isNotEmpty() && !hasFirstCat) {
-                // If no first cat, display in screen center
+                // Center dialog when no first cat
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -496,7 +483,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // ✅ 新增：Right side control area (mode switching + Settings)
+            // 右侧控制区域 - 简化版按钮
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -504,30 +491,10 @@ class MainActivity : ComponentActivity() {
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
             ) {
-                // ✅ 新增：Mode switching button
-                PlacementModeToggleButton(
-                    placementModeManager = placementModeManager,
-                    childNodes = childNodes,
-                    arRenderer = arRenderer,
-                    modelCount = modelsCount,
-                    onModelsCleared = {
-                        // ✅ 新增：清除所有狀態保持同步
-                        touchHandler.clearAllCats(childNodes, arRenderer)
-                        
-                        // Clear UI state
-                        hasFirstCat = false
-                        firstCatDialogPosition = Offset.Zero
-                        isChatVisible = false
-                        chatMessage = ""
-                        
-                        Log.d(TAG, "Mode switched - all states cleared")
-                    }
-                )
-                
-                // Settings button
+                // 模式切换按钮 - 简化版
                 Card(
                     modifier = Modifier
-                        .width(100.dp)
+                        .width(80.dp)
                         .wrapContentHeight(),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
@@ -540,26 +507,129 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = "Settings",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
-                        
-                        Button(
+                        OutlinedButton(
+                            onClick = {
+                                placementModeManager.switchToNextMode(
+                                    childNodes = childNodes,
+                                    arRenderer = arRenderer,
+                                    onModelsCleared = {
+                                        touchHandler.clearAllCats(childNodes, arRenderer)
+                                        hasFirstCat = false
+                                        firstCatDialogPosition = Offset.Zero
+                                        isChatVisible = false
+                                        chatMessage = ""
+                                    }
+                                )
+                            },
+                            modifier = Modifier.size(64.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(currentMode.color)
+                            ),
+                            border = BorderStroke(2.dp, Color(currentMode.color)),
+                            contentPadding = PaddingValues(4.dp)
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = currentMode.icon,
+                                    fontSize = 20.sp,
+                                    color = Color(currentMode.color)
+                                )
+                                Text(
+                                    text = currentMode.displayName,
+                                    fontSize = 10.sp,
+                                    color = Color(currentMode.color),
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                // 清除平面数据按钮
+                Card(
+                    modifier = Modifier
+                        .width(80.dp)
+                        .wrapContentHeight(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                placementModeManager.clearPlaneData {
+                                    Log.d(TAG, "Plane data cleared")
+                                }
+                            },
+                            modifier = Modifier.size(64.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.secondary
+                            ),
+                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.secondary),
+                            contentPadding = PaddingValues(4.dp)
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = "🧹",
+                                    fontSize = 20.sp
+                                )
+                                Text(
+                                    text = "Planes",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                // 设置按钮 - 简化版
+                Card(
+                    modifier = Modifier
+                        .width(80.dp)
+                        .wrapContentHeight(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        OutlinedButton(
                             onClick = { showSettings = true },
                             modifier = Modifier.size(64.dp),
                             shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondary
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.secondary
                             ),
+                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.secondary),
                             contentPadding = PaddingValues(4.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
                                 contentDescription = "Settings",
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -567,7 +637,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         
-            // Control panel - ✅ 更新顯示模式資訊
+            // 简化版控制面板
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -581,21 +651,16 @@ class MainActivity : ComponentActivity() {
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
-                    // Header
+                    // Header - 只显示跟踪状态
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "AR Cat App",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        
-                        Text(
                             text = trackingStatus,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
                             color = when {
                                 canPlace -> MaterialTheme.colorScheme.primary
                                 trackingStatus.contains("Lost") || trackingStatus.contains("Failed") -> 
@@ -605,7 +670,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     
-                    // ✅ 更新：顯示模式和狀態
+                    // 状态信息
                     Text(
                         text = planeStatus,
                         style = MaterialTheme.typography.bodySmall,
@@ -615,50 +680,30 @@ class MainActivity : ComponentActivity() {
                     
                     Spacer(modifier = Modifier.height(12.dp))
                     
-                    // Statistics and controls
+                    // 统计和控制 - 移除图标
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Planes count
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Dashboard,
-                                contentDescription = "Planes",
-                                modifier = Modifier.size(16.dp),
-                                tint = if (canPlace) MaterialTheme.colorScheme.primary 
-                                       else MaterialTheme.colorScheme.secondary
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "$planesCount Planes",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (canPlace) MaterialTheme.colorScheme.primary 
-                                       else MaterialTheme.colorScheme.secondary
-                            )
-                        }
+                        // 平面数量
+                        Text(
+                            text = "$planesCount Planes",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (canPlace) MaterialTheme.colorScheme.primary 
+                                   else MaterialTheme.colorScheme.secondary
+                        )
                         
-                        // AR models count
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Pets,
-                                contentDescription = "AR Models",
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.secondary
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "$modelsCount Cats" + if (touchHandler.getFirstCatModel() != null) " (Dialog)" else "",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
+                        // 模型数量
+                        Text(
+                            text = "$modelsCount Cats" + if (touchHandler.getFirstCatModel() != null) " (Dialog)" else "",
+                            style = MaterialTheme.typography.bodySmall
+                        )
                         
-                        // Clear button
+                        // 清除按钮
                         if (modelsCount > 0) {
                             TextButton(
                                 onClick = {
-                                    // ✅ 使用 Manager 的清除方法
                                     placementModeManager.clearAllModels(childNodes, arRenderer)
                                     hasFirstCat = false
                                     firstCatDialogPosition = Offset.Zero
@@ -666,14 +711,8 @@ class MainActivity : ComponentActivity() {
                                     chatMessage = ""
                                 }
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Clear,
-                                    contentDescription = "Clear",
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "Clear", 
+                                    text = "Clear Models", 
                                     style = MaterialTheme.typography.bodySmall
                                 )
                             }
@@ -682,19 +721,19 @@ class MainActivity : ComponentActivity() {
                 }
             }
             
-            // Settings Dialog
+            // 简化版设置对话框
             if (showSettings) {
                 AlertDialog(
                     onDismissRequest = { showSettings = false },
                     title = { Text("Rotation Settings") },
                     text = {
                         Column {
-                            Text("Adjust rotation sensitivity (lower = smoother):")
+                            Text("Adjust rotation sensitivity:")
                             
                             Spacer(modifier = Modifier.height(16.dp))
                             
                             // Y-axis sensitivity slider
-                            Text("Y-axis (Horizontal) Sensitivity: ${String.format("%.2f", touchHandler.rotationSensitivityY)}")
+                            Text("Horizontal: ${String.format("%.2f", touchHandler.rotationSensitivityY)}")
                             Slider(
                                 value = touchHandler.rotationSensitivityY,
                                 onValueChange = { touchHandler.rotationSensitivityY = it },
@@ -705,19 +744,12 @@ class MainActivity : ComponentActivity() {
                             Spacer(modifier = Modifier.height(8.dp))
                             
                             // X-axis sensitivity slider  
-                            Text("X-axis (Vertical) Sensitivity: ${String.format("%.2f", touchHandler.rotationSensitivityX)}")
+                            Text("Vertical: ${String.format("%.2f", touchHandler.rotationSensitivityX)}")
                             Slider(
                                 value = touchHandler.rotationSensitivityX,
                                 onValueChange = { touchHandler.rotationSensitivityX = it },
                                 valueRange = 0.1f..2.0f,
                                 steps = 18
-                            )
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = "Watson dialog with smart positioning and mode switching",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     },
@@ -776,8 +808,8 @@ class MainActivity : ComponentActivity() {
                     },
                     placeholder = when {
                         touchHandler.getSelectedNode() != null -> "Selected: ${touchHandler.getSelectedNode()?.name} - Rotate with drag..."
-                        modelsCount > 0 -> "Chat with spooky cats! (${currentMode.displayName} mode)" // ✅ 顯示當前模式
-                        else -> "Tap anywhere to place cats... (${currentMode.displayName} mode)" // ✅ 顯示當前模式
+                        modelsCount > 0 -> "Chat with spooky cats! (${currentMode.displayName} mode)"
+                        else -> "Tap anywhere to place cats... (${currentMode.displayName} mode)"
                     },
                     isLoading = isLoading
                 )
@@ -796,14 +828,14 @@ class MainActivity : ComponentActivity() {
                     "Use 'clear' to remove all cats and reset"
                 }
                 "clear" -> {
-                    "All cats cleared! Place a new first cat for dialog binding! Current mode: ${placementModeManager.currentMode.value.displayName}" // ✅ 顯示當前模式
+                    "All cats cleared! Place a new first cat for dialog binding! Current mode: ${placementModeManager.currentMode.value.displayName}"
                 }
                 else -> {
                     val result = WatsonAIEnhanced.getEnhancedAIResponse(message)
                     if (result.success && result.response.isNotEmpty()) {
                         result.response
                     } else {
-                        "Meow~ Watson dialog is bound to the first cat! Mode: ${placementModeManager.currentMode.value.displayName}" // ✅ 顯示當前模式
+                        "Meow~ Watson dialog is bound to the first cat! Mode: ${placementModeManager.currentMode.value.displayName}"
                     }
                 }
             }

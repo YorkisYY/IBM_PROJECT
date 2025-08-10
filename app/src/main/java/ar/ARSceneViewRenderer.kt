@@ -34,24 +34,24 @@ class ARSceneViewRenderer {
         // Enable depth if supported
         if (arSession.isDepthModeSupported(Config.DepthMode.AUTOMATIC)) {
             config.depthMode = Config.DepthMode.AUTOMATIC
-            Log.d(TAG, "✅ Depth detection enabled")
+            Log.d(TAG, "Depth detection enabled")
         } else {
             config.depthMode = Config.DepthMode.DISABLED
-            Log.w(TAG, "⚠️ Device does not support depth detection")
+            Log.w(TAG, "Device does not support depth detection")
         }
         
         // Configure lighting and placement
         config.lightEstimationMode = Config.LightEstimationMode.ENVIRONMENTAL_HDR
         config.instantPlacementMode = Config.InstantPlacementMode.LOCAL_Y_UP
         
-        Log.d(TAG, "✅ AR Session configured successfully")
+        Log.d(TAG, "AR Session configured successfully")
     }
     
     /**
      * Handle AR Session Creation
      */
     fun onSessionCreated(arSession: Session) {
-        Log.d(TAG, "✅ AR Session created successfully")
+        Log.d(TAG, "AR Session created successfully")
         trackingStatus.value = "AR Session Created"
         planeDetectionStatus.value = "Move device slowly to scan environment..."
     }
@@ -60,7 +60,7 @@ class ARSceneViewRenderer {
      * Handle AR Session Resume
      */
     fun onSessionResumed(arSession: Session) {
-        Log.d(TAG, "▶️ AR Session resumed")
+        Log.d(TAG, " AR Session resumed")
         trackingStatus.value = "AR Tracking Active"
     }
     
@@ -68,7 +68,7 @@ class ARSceneViewRenderer {
      * Handle AR Session Pause
      */
     fun onSessionPaused(arSession: Session) {
-        Log.d(TAG, "⏸️ AR Session paused")
+        Log.d(TAG, " AR Session paused")
         trackingStatus.value = "AR Session Paused"
     }
     
@@ -76,7 +76,7 @@ class ARSceneViewRenderer {
      * Handle AR Session Failure
      */
     fun onSessionFailed(exception: Exception) {
-        Log.e(TAG, "❌ AR Session failed: ${exception.message}")
+        Log.e(TAG, " AR Session failed: ${exception.message}")
         trackingStatus.value = "AR Session Failed"
         planeDetectionStatus.value = "AR initialization failed - check device compatibility"
     }
@@ -124,7 +124,7 @@ class ARSceneViewRenderer {
             // Log plane types for debugging
             if (trackingPlanes.isNotEmpty()) {
                 val planeTypes = trackingPlanes.groupBy { it.type }.mapValues { it.value.size }
-                Log.v(TAG, "🎯 Detected planes: $planeTypes")
+                Log.v(TAG, " Detected planes: $planeTypes")
             }
             
         } else {
@@ -147,9 +147,9 @@ class ARSceneViewRenderer {
             childNodes.clear()
             placedModelsCount.value = 0
             planeDetectionStatus.value = "All models cleared - ready to place new cats"
-            Log.d(TAG, "🗑️ All models cleared successfully")
+            Log.d(TAG, " All models cleared successfully")
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error clearing models: ${e.message}", e)
+            Log.e(TAG, " Error clearing models: ${e.message}", e)
         }
     }
     
