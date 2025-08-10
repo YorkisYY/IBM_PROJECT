@@ -8,7 +8,11 @@ import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -19,12 +23,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.ibm_project.ui.theme.IBM_PROJECTTheme
 import com.google.ar.core.*
@@ -35,7 +45,10 @@ import watsonx.WatsonAIEnhanced
 import ar.ARSceneViewRenderer
 import ar.ARTouchHandler
 import ar.ARDialogTracker
-
+import ar.PlacementModeManager // ✅ 新增：模式管理器
+import ar.PlacementModeToggleButton // ✅ 新增：模式切換按鈕
+import kotlin.math.roundToInt
+import androidx.compose.foundation.BorderStroke
 // SceneView 2.3.0 imports
 import io.github.sceneview.rememberEngine
 import io.github.sceneview.rememberModelLoader
@@ -47,6 +60,7 @@ import io.github.sceneview.collision.HitResult
 import io.github.sceneview.math.Position
 import io.github.sceneview.utils.worldToScreen
 import io.github.sceneview.node.ModelNode
+import io.github.sceneview.node.Node
 
 // ARScene imports
 import io.github.sceneview.ar.ARScene
@@ -55,7 +69,8 @@ import io.github.sceneview.ar.rememberARCameraStream
 
 /**
  * AR Cat Interaction App - Watson dialog bound to first cat
- * 使用 SceneView 2.3.0 正確的碰撞檢測系統
+ * 基於你的原始設計，添加 PlacementModeManager 的模式切換功能
+ * 保持原本的觸摸處理邏輯和碰撞檢測系統
  */
 class MainActivity : ComponentActivity() {
 
@@ -67,6 +82,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var arRenderer: ARSceneViewRenderer
     private lateinit var touchHandler: ARTouchHandler
     private lateinit var dialogTracker: ARDialogTracker
+    private lateinit var placementModeManager: PlacementModeManager // ✅ 新增：模式管理器
     
     // Permission launcher
     private val permissionLauncher = registerForActivityResult(
@@ -79,10 +95,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate started")
         
-        // Initialize AR Renderer
+        // Initialize AR components
         arRenderer = ARSceneViewRenderer()
         touchHandler = ARTouchHandler()
         dialogTracker = ARDialogTracker()
+        placementModeManager = PlacementModeManager(this) // ✅ 新增：初始化模式管理器
+        
+        // ✅ 新增：整合 Handler 和 Manager
+        placementModeManager.setARTouchHandler(touchHandler)
         
         // Request necessary permissions
         requestNecessaryPermissions()
@@ -156,6 +176,8 @@ class MainActivity : ComponentActivity() {
         val context = LocalContext.current
         val lifecycle = LocalLifecycleOwner.current.lifecycle
         val coroutineScope = rememberCoroutineScope()
+        val density = LocalDensity.current
+        val focusManager = LocalFocusManager.current
         
         // UI state
         var inputText by remember { mutableStateOf("") }
@@ -164,6 +186,10 @@ class MainActivity : ComponentActivity() {
         var isChatVisible by remember { mutableStateOf(false) }
         var showSettings by remember { mutableStateOf(false) }
         
+        // Dialog binding to first cat position
+        var firstCatDialogPosition by remember { mutableStateOf(Offset.Zero) }
+        var hasFirstCat by remember { mutableStateOf(false) }
+        
         // AR state from renderer
         val planesCount = arRenderer.detectedPlanesCount.value
         val modelsCount = arRenderer.placedModelsCount.value
@@ -171,12 +197,15 @@ class MainActivity : ComponentActivity() {
         val trackingStatus = arRenderer.trackingStatus.value
         val planeStatus = arRenderer.planeDetectionStatus.value
         
-        // 🔥 SceneView 2.3.0 initialization
+        // ✅ 新增：獲取當前模式
+        val currentMode by placementModeManager.currentMode
+        
+        // SceneView 2.3.0 initialization
         val engine = rememberEngine()
         val modelLoader = rememberModelLoader(engine)
         val materialLoader = rememberMaterialLoader(engine)
         val view = rememberView(engine)
-        val collisionSystem = rememberCollisionSystem(view) // 🔥 正確的碰撞系統
+        val collisionSystem = rememberCollisionSystem(view)
         val childNodes = rememberNodes()
         val cameraNode = rememberARCameraNode(engine)
         
@@ -203,35 +232,27 @@ class MainActivity : ComponentActivity() {
             }
         }
         
-        // Dialog position bound to first cat
-        var firstCatDialogPosition by remember { mutableStateOf(Offset.Zero) }
-        var hasFirstCat by remember { mutableStateOf(false) }
-        
-        // Get first cat screen coordinates - optimized version
+        // First cat screen coordinate tracking logic
         LaunchedEffect(touchHandler.getFirstCatModel(), frame) {
             touchHandler.getFirstCatModel()?.let { cat ->
                 try {
-                    // Use cat's base world position without extra height
                     val catWorldPosition = Position(
                         x = cat.worldPosition.x,
-                        y = cat.worldPosition.y + 0.1f, // Only add 20cm height
+                        y = cat.worldPosition.y + 0.1f,
                         z = cat.worldPosition.z
                     )
                     
-                    // Convert to screen coordinates
                     val screenPos = view.worldToScreen(catWorldPosition)
                     
-                    // Only update when Y coordinate is positive and reasonable
                     if (screenPos.y > 0f && screenPos.y < 2000f) {
                         val newPosition = Offset(screenPos.x, screenPos.y)
                         
-                        // Only update when position changes significantly (reduce unnecessary recomposition)
                         val distance = kotlin.math.sqrt(
                             (newPosition.x - firstCatDialogPosition.x).let { it * it } +
                             (newPosition.y - firstCatDialogPosition.y).let { it * it }
                         )
                         
-                        if (distance > 10f) { // Only update when movement exceeds 10 pixels
+                        if (distance > 10f) {
                             firstCatDialogPosition = newPosition
                             hasFirstCat = true
                             Log.d(TAG, "First cat dialog position updated: screenPos=(${screenPos.x}, ${screenPos.y})")
@@ -253,8 +274,18 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Main AR View with SceneView 2.3.0 collision detection
+        // Add click outside area to cancel input focus functionality
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) {
+                    focusManager.clearFocus()
+                }
+        ) {
+            // Main AR View - 保持你的原始設計
             ARScene(
                 modifier = Modifier.fillMaxSize(),
                 childNodes = childNodes,
@@ -263,7 +294,7 @@ class MainActivity : ComponentActivity() {
                 modelLoader = modelLoader,
                 materialLoader = materialLoader,
                 cameraNode = cameraNode,
-                collisionSystem = collisionSystem, // 🔥 確保傳遞 collisionSystem
+                collisionSystem = collisionSystem,
                 activity = context as ComponentActivity,
                 lifecycle = lifecycle,
                 
@@ -277,6 +308,8 @@ class MainActivity : ComponentActivity() {
                 onSessionCreated = { arSession ->
                     session = arSession
                     arRenderer.onSessionCreated(arSession)
+                    // ✅ 新增：讓 Manager 知道 Session
+                    placementModeManager.setSession(arSession)
                 },
                 
                 onSessionResumed = { arSession ->
@@ -297,10 +330,17 @@ class MainActivity : ComponentActivity() {
                     arRenderer.onSessionUpdated(arSession, updatedFrame)
                 },
                 
+                // ✅ 保持你的原始觸摸處理方式
                 onTouchEvent = { motionEvent: MotionEvent, hitResult: HitResult? ->
                     when (motionEvent.action) {
                         MotionEvent.ACTION_DOWN -> {
-                            // 🔥 使用修正後的 SceneView 2.3.0 觸摸處理
+                            // Clear input focus
+                            focusManager.clearFocus()
+                            
+                            // ✅ 新增：讓 Manager 知道當前 Session（用於配置平面檢測）
+                            placementModeManager.setSession(session)
+                            
+                            // ✅ 保持你的原始觸摸處理：直接調用 Handler
                             touchHandler.handleSceneViewTouchDown(
                                 motionEvent = motionEvent,
                                 hitResult = hitResult,
@@ -310,8 +350,8 @@ class MainActivity : ComponentActivity() {
                                 childNodes = childNodes,
                                 engine = engine,
                                 arRenderer = arRenderer,
-                                collisionSystem = collisionSystem, // 🔥 傳遞 collisionSystem
-                                cameraNode = cameraNode, // 🔥 傳遞 cameraNode
+                                collisionSystem = collisionSystem, // ✅ 直接可用
+                                cameraNode = cameraNode, // ✅ 直接可用
                                 onFirstCatCreated = { newFirstCat: ModelNode? ->
                                     Log.d(TAG, "First cat created for dialog binding: ${newFirstCat?.name ?: "unknown"}")
                                 }
@@ -328,23 +368,206 @@ class MainActivity : ComponentActivity() {
                 }
             )
             
-            // Watson Dialog - bound to first cat, wider dialog
-            dialogTracker.WatsonDialogBoundToFirstCat(
-                isChatVisible = isChatVisible,
-                chatMessage = chatMessage,
-                firstCatModel = touchHandler.getFirstCatModel(),
-                firstCatDialogPosition = firstCatDialogPosition,
-                hasFirstCat = hasFirstCat
-            )
-            
-            // Watson Dialog - center when no first cat - also supports scrolling and wider design
-            dialogTracker.WatsonDialogCenter(
-                isChatVisible = isChatVisible,
-                chatMessage = chatMessage,
-                hasFirstCat = hasFirstCat
-            )
+            // Watson dialog - bound to first cat
+            if (isChatVisible && chatMessage.isNotEmpty() && hasFirstCat && touchHandler.getFirstCatModel() != null) {
+                BoxWithConstraints {
+                    val dialogOffset = with(density) {
+                        val dialogWidth = 340.dp.toPx()
+                        val maxDialogHeight = 160.dp.toPx()
+                        val margin = 20.dp.toPx()
+                        
+                        val screenWidthPx = maxWidth.toPx()
+                        val screenHeightPx = maxHeight.toPx()
+                        
+                        val safeMaxX: Float = (screenWidthPx - dialogWidth).coerceAtLeast(margin)
+                        val safeMinY: Float = 120.dp.toPx()
+                        
+                        val catScreenY = firstCatDialogPosition.y
+                        
+                        val dialogTopY = if (catScreenY > 200.dp.toPx()) {
+                            (catScreenY - maxDialogHeight - 20.dp.toPx()).coerceAtLeast(safeMinY)
+                        } else {
+                            (catScreenY + 50.dp.toPx()).coerceAtMost(screenHeightPx - maxDialogHeight - 50.dp.toPx())
+                        }
+                        
+                        IntOffset(
+                            x = (firstCatDialogPosition.x - (dialogWidth / 2)).roundToInt()
+                                .coerceIn(margin.roundToInt(), safeMaxX.roundToInt()),
+                            y = dialogTopY.roundToInt()
+                        )
+                    }
+                    
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .offset { dialogOffset },
+                        contentAlignment = Alignment.TopStart
+                    ) {
+                        Column {
+                            Box(
+                                modifier = Modifier
+                                    .width(340.dp)
+                                    .heightIn(min = 90.dp, max = 160.dp)
+                                    .shadow(8.dp, RoundedCornerShape(16.dp))
+                                    .background(
+                                        color = Color(0xFF2196F3),
+                                        shape = RoundedCornerShape(16.dp)
+                                    )
+                                    .padding(18.dp),
+                                contentAlignment = Alignment.TopStart
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Text(
+                                        text = "${touchHandler.getFirstCatModel()?.name ?: "First Cat"} (${firstCatDialogPosition.x.toInt()}, ${firstCatDialogPosition.y.toInt()})",
+                                        color = Color.White.copy(alpha = 0.8f),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    
+                                    LazyColumn(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .weight(1f),
+                                        verticalArrangement = Arrangement.Top
+                                    ) {
+                                        item {
+                                            Text(
+                                                text = chatMessage,
+                                                color = Color.White,
+                                                fontSize = 16.sp,
+                                                lineHeight = 22.sp,
+                                                textAlign = TextAlign.Start
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            Box(
+                                modifier = Modifier
+                                    .padding(start = (340.dp / 2 - 6.dp))
+                                    .size(12.dp)
+                                    .background(
+                                        Color(0xFF2196F3),
+                                        RoundedCornerShape(topStart = 6.dp)
+                                    )
+                                    .offset(y = (-1).dp)
+                            )
+                        }
+                    }
+                }
+            } else if (isChatVisible && chatMessage.isNotEmpty() && !hasFirstCat) {
+                // If no first cat, display in screen center
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 120.dp)
+                            .widthIn(min = 240.dp, max = 360.dp)
+                            .heightIn(min = 70.dp, max = 220.dp)
+                            .shadow(8.dp, RoundedCornerShape(16.dp))
+                            .background(
+                                color = Color(0xFF2196F3),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .padding(18.dp)
+                    ) {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.Top
+                        ) {
+                            item {
+                                Text(
+                                    text = chatMessage,
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                    lineHeight = 22.sp,
+                                    textAlign = TextAlign.Start
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ✅ 新增：Right side control area (mode switching + Settings)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(end = 16.dp, top = 120.dp),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
+            ) {
+                // ✅ 新增：Mode switching button
+                PlacementModeToggleButton(
+                    placementModeManager = placementModeManager,
+                    childNodes = childNodes,
+                    arRenderer = arRenderer,
+                    modelCount = modelsCount,
+                    onModelsCleared = {
+                        // ✅ 新增：清除所有狀態保持同步
+                        touchHandler.clearAllCats(childNodes, arRenderer)
+                        
+                        // Clear UI state
+                        hasFirstCat = false
+                        firstCatDialogPosition = Offset.Zero
+                        isChatVisible = false
+                        chatMessage = ""
+                        
+                        Log.d(TAG, "Mode switched - all states cleared")
+                    }
+                )
+                
+                // Settings button
+                Card(
+                    modifier = Modifier
+                        .width(100.dp)
+                        .wrapContentHeight(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Settings",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                        
+                        Button(
+                            onClick = { showSettings = true },
+                            modifier = Modifier.size(64.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondary
+                            ),
+                            contentPadding = PaddingValues(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = Color.White,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
+            }
         
-            // Control panel with updated status messages
+            // Control panel - ✅ 更新顯示模式資訊
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -365,7 +588,7 @@ class MainActivity : ComponentActivity() {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "AR Mode + Simplified Collision", // 🔥 更新標題
+                            text = "AR Cat App",
                             fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleMedium
                         )
@@ -382,7 +605,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     
-                    // Status
+                    // ✅ 更新：顯示模式和狀態
                     Text(
                         text = planeStatus,
                         style = MaterialTheme.typography.bodySmall,
@@ -426,7 +649,7 @@ class MainActivity : ComponentActivity() {
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "$modelsCount Cats" + if (touchHandler.getFirstCatModel() != null) " (Simplified)" else "",
+                                text = "$modelsCount Cats" + if (touchHandler.getFirstCatModel() != null) " (Dialog)" else "",
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
@@ -435,8 +658,8 @@ class MainActivity : ComponentActivity() {
                         if (modelsCount > 0) {
                             TextButton(
                                 onClick = {
-                                    touchHandler.clearAllCats(childNodes, arRenderer)
-                                    // Clear dialog
+                                    // ✅ 使用 Manager 的清除方法
+                                    placementModeManager.clearAllModels(childNodes, arRenderer)
                                     hasFirstCat = false
                                     firstCatDialogPosition = Offset.Zero
                                     isChatVisible = false
@@ -455,33 +678,15 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                        
-                        // Settings button
-                        TextButton(
-                            onClick = {
-                                showSettings = true
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Settings",
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Settings", 
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
                     }
                 }
             }
             
-            // Settings Dialog with updated information
+            // Settings Dialog
             if (showSettings) {
                 AlertDialog(
                     onDismissRequest = { showSettings = false },
-                    title = { Text("Simplified Collision Settings") },
+                    title = { Text("Rotation Settings") },
                     text = {
                         Column {
                             Text("Adjust rotation sensitivity (lower = smoother):")
@@ -510,7 +715,7 @@ class MainActivity : ComponentActivity() {
                             
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "使用簡化的距離檢測方法，穩定可靠", // 🔥 更新說明
+                                text = "Watson dialog with smart positioning and mode switching",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -551,21 +756,16 @@ class MainActivity : ComponentActivity() {
                             
                             coroutineScope.launch {
                                 try {
-                                    // Clear previous dialog
                                     isChatVisible = false
                                     
                                     val reply = processUserMessage(userMessage)
                                     chatMessage = reply
                                     isChatVisible = true
                                     
-                                    // Remove auto-disappear - wait for next input to disappear
-                                    // delay(5000)
-                                    // isChatVisible = false
                                 } catch (e: Exception) {
                                     Log.e(TAG, "Processing failed", e)
                                     chatMessage = "Sorry, something went wrong"
                                     isChatVisible = true
-                                    // Error message disappears after 3 seconds
                                     delay(3000)
                                     isChatVisible = false
                                 } finally {
@@ -576,8 +776,8 @@ class MainActivity : ComponentActivity() {
                     },
                     placeholder = when {
                         touchHandler.getSelectedNode() != null -> "Selected: ${touchHandler.getSelectedNode()?.name} - Rotate with drag..."
-                        modelsCount > 0 -> "Chat with spooky cat !"
-                        else -> "Tap anywhere to place cats..."
+                        modelsCount > 0 -> "Chat with spooky cats! (${currentMode.displayName} mode)" // ✅ 顯示當前模式
+                        else -> "Tap anywhere to place cats... (${currentMode.displayName} mode)" // ✅ 顯示當前模式
                     },
                     isLoading = isLoading
                 )
@@ -591,19 +791,19 @@ class MainActivity : ComponentActivity() {
                 "help" -> {
                     "Tap screen to place cats in AR!\n" +
                     "Tap any cat then drag for smooth 360 degree rotation\n" +
-                    "Simplified collision detection prevents overlapping\n" +
-                    "Watson wide dialog follows first cat with smart positioning\n" +
+                    "Use right panel to switch placement modes\n" +
+                    "Watson dialog follows first cat with smart positioning\n" +
                     "Use 'clear' to remove all cats and reset"
                 }
                 "clear" -> {
-                    "All cats cleared! Place a new first cat for wide dialog binding!"
+                    "All cats cleared! Place a new first cat for dialog binding! Current mode: ${placementModeManager.currentMode.value.displayName}" // ✅ 顯示當前模式
                 }
                 else -> {
                     val result = WatsonAIEnhanced.getEnhancedAIResponse(message)
                     if (result.success && result.response.isNotEmpty()) {
                         result.response
                     } else {
-                        "Meow~ Watson wide dialog is bound to the first cat with simplified collision detection!"
+                        "Meow~ Watson dialog is bound to the first cat! Mode: ${placementModeManager.currentMode.value.displayName}" // ✅ 顯示當前模式
                     }
                 }
             }

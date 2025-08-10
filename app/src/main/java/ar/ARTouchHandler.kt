@@ -39,7 +39,7 @@ class ARTouchHandler {
         private const val SMOOTH_FACTOR = 0.15f
         private const val MIN_VELOCITY_THRESHOLD = 0.01f
         
-        // 調整為更合理的安全距離
+    
         private const val SAFE_PLACEMENT_DISTANCE = 0.3f 
         private const val TOUCH_DETECTION_RADIUS = 0.3f
         private const val MAX_MODELS_ALLOWED = 3 
