@@ -4,7 +4,7 @@ package models
 import kotlinx.serialization.Serializable
 
 /**
- * 天氣數據模型 - 基於您的 TypeScript WeatherData interface
+ * Weather data model - Based on your TypeScript WeatherData interface
  */
 @Serializable
 data class WeatherData(
@@ -33,12 +33,12 @@ data class WeatherData(
     }
     
     fun toReadableString(): String {
-        return "$city, $country: $condition, ${temperature}°C, 濕度 ${humidity}%, 風速 ${String.format("%.1f", windSpeed)}m/s"
+        return "$city, $country: $condition, ${temperature}°C, Humidity ${humidity}%, Wind speed ${String.format("%.1f", windSpeed)}m/s"
     }
 }
 
 /**
- * wttr.in API 回應數據結構
+ * wttr.in API response data structure
  */
 @Serializable
 data class WttrResponse(

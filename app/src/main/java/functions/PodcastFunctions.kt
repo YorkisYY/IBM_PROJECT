@@ -1,4 +1,4 @@
-// functions/PodcastManager.kt - Complete English Version with iTunes API
+// functions/PodcastFunctions.kt - Complete English Version with iTunes API
 package functions
 
 import android.content.Context
@@ -42,7 +42,7 @@ object PodcastFunctions {
     )
     
     fun initialize(context: Context) {
-        Log.d(TAG, "✅ Podcast Functions initialized")
+        Log.d(TAG, "Podcast Functions initialized")
     }
     
     /**
@@ -50,7 +50,7 @@ object PodcastFunctions {
      */
     suspend fun execute(functionName: String, arguments: String): String {
         return try {
-            Log.d(TAG, "🎯 Executing podcast function: $functionName")
+            Log.d(TAG, "Executing podcast function: $functionName")
             
             when (functionName) {
                 "get_podcasts_by_category" -> getPodcastsByCategory(arguments)
@@ -66,12 +66,12 @@ object PodcastFunctions {
                 "get_recommended_podcasts" -> getRecommendedPodcasts(arguments)
                 "get_podcast_categories" -> getPodcastCategories()
                 else -> {
-                    Log.w(TAG, "⚠️ Unknown podcast function: $functionName")
+                    Log.w(TAG, "Unknown podcast function: $functionName")
                     "Sorry, I don't recognize that podcast function."
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Podcast function execution failed: ${e.message}")
+            Log.e(TAG, "Podcast function execution failed: ${e.message}")
             "Sorry, I couldn't retrieve the podcast information right now. Please try again later."
         }
     }
@@ -86,39 +86,39 @@ object PodcastFunctions {
         // If no specific interests provided, show categories
         if (interests.isNullOrEmpty()) {
             return """
-🎧 I can recommend podcasts from these categories:
+I can recommend podcasts from these categories:
 
-🏥 **Health & Fitness** (health_fitness)
+**Health & Fitness** (health_fitness)
    Health tips, exercise guidance, wellness advice, medical insights
 
-📚 **History** (history) 
+**History** (history) 
    Historical stories, documentaries, cultural heritage, past events
 
-🎓 **Education** (education)
+**Education** (education)
    Learning new skills, practical knowledge, tutorials, courses
 
-📰 **News** (news)
+**News** (news)
    Current events, news analysis, political discussions, world updates
 
-🧘 **Religion & Spirituality** (religion_spirituality)
+**Religion & Spirituality** (religion_spirituality)
    Spiritual guidance, meditation, personal growth, faith discussions
 
-🔬 **Science** (science)
+**Science** (science)
    Scientific discoveries, research findings, nature documentaries
 
-🎨 **Arts** (arts)
+**Arts** (arts)
    Art appreciation, cultural discussions, creative processes
 
-💼 **Business** (business)
+**Business** (business)
    Business insights, entrepreneurship, investment advice, career tips
 
-💻 **Technology** (technology)
+**Technology** (technology)
    Tech news, gadget reviews, digital trends, innovation
 
-🏛️ **Society & Culture** (society_culture)
+**Society & Culture** (society_culture)
    Social issues, cultural trends, human interest stories
 
-🎯 **Leisure** (leisure)
+**Leisure** (leisure)
    Hobbies, entertainment, travel, lifestyle content
 
 Which category interests you most? Just tell me the category name and I'll find great podcasts for you!
@@ -135,17 +135,17 @@ Which category interests you most? Just tell me the category name and I'll find 
     private suspend fun getPodcastCategories(): String {
         val categories = getRecommendedPodcastCategories()
         val sb = StringBuilder()
-        sb.appendLine("🎧 Available Podcast Categories")
+        sb.appendLine("Available Podcast Categories")
         sb.appendLine("=".repeat(40))
         
         categories.forEach { category ->
-            sb.appendLine("\n📂 ${category.name}")
+            sb.appendLine("\n${category.name}")
             sb.appendLine("   ID: ${category.id}")
             sb.appendLine("   Category: ${category.english}")
-            sb.appendLine("   📝 ${category.description}")
+            sb.appendLine("   ${category.description}")
         }
         
-        sb.appendLine("\n💡 Usage examples:")
+        sb.appendLine("\nUsage examples:")
         sb.appendLine("• Say 'I want health podcasts'")
         sb.appendLine("• Say 'Show me history podcasts'")
         sb.appendLine("• Say 'Find education podcasts'")
@@ -352,7 +352,7 @@ Which category interests you most? Just tell me the category name and I'll find 
                     "country=$country&" +
                     "explicit=No"  // Filter out explicit content for elderly users
             
-            Log.d(TAG, "📡 Calling iTunes API: $apiUrl")
+            Log.d(TAG, "Calling iTunes API: $apiUrl")
             
             val response = URL(apiUrl).readText()
             val podcastResponse = json.decodeFromString<PodcastResponse>(response)
@@ -386,7 +386,7 @@ Which category interests you most? Just tell me the category name and I'll find 
                     "country=$country&" +
                     "explicit=No"
             
-            Log.d(TAG, "📡 Searching iTunes API: $apiUrl")
+            Log.d(TAG, "Searching iTunes API: $apiUrl")
             
             val response = URL(apiUrl).readText()
             val podcastResponse = json.decodeFromString<PodcastResponse>(response)
@@ -494,27 +494,27 @@ Which category interests you most? Just tell me the category name and I'll find 
      */
     private fun formatPodcastResponse(podcasts: List<Podcast>, title: String): String {
         val sb = StringBuilder()
-        sb.appendLine("🎧 $title")
+        sb.appendLine("$title")
         sb.appendLine("=".repeat(50))
         
         podcasts.take(15).forEachIndexed { index, podcast ->
             sb.appendLine("\n${index + 1}. ${podcast.trackName}")
-            sb.appendLine("   👤 Host: ${podcast.artistName}")
+            sb.appendLine("   Host: ${podcast.artistName}")
             if (podcast.primaryGenreName?.isNotEmpty() == true) {
-                sb.appendLine("   🏷️ Category: ${podcast.primaryGenreName}")
+                sb.appendLine("   Category: ${podcast.primaryGenreName}")
             }
             if (podcast.trackCount != null && podcast.trackCount > 0) {
-                sb.appendLine("   📊 Episodes: ${podcast.trackCount}")
+                sb.appendLine("   Episodes: ${podcast.trackCount}")
             }
             podcast.feedUrl?.let { feedUrl ->
-                sb.appendLine("   📻 Feed: ${feedUrl.take(60)}...")
+                sb.appendLine("   Feed: ${feedUrl.take(60)}...")
             }
             podcast.trackViewUrl?.let { url ->
-                sb.appendLine("   🔗 iTunes: ${url}")
+                sb.appendLine("   iTunes: ${url}")
             }
         }
         
-        sb.appendLine("\n📊 Total ${podcasts.size} podcasts found")
+        sb.appendLine("\nTotal ${podcasts.size} podcasts found")
         return sb.toString()
     }
     
@@ -523,24 +523,24 @@ Which category interests you most? Just tell me the category name and I'll find 
      */
     private fun formatEpisodesResponse(episodes: List<PodcastEpisode>, title: String): String {
         val sb = StringBuilder()
-        sb.appendLine("🎧 $title")
+        sb.appendLine("$title")
         sb.appendLine("=".repeat(50))
         
         episodes.take(10).forEachIndexed { index, episode ->
             sb.appendLine("\n${index + 1}. ${episode.title}")
-            sb.appendLine("   📝 ${episode.description.take(150)}${if (episode.description.length > 150) "..." else ""}")
+            sb.appendLine("   ${episode.description.take(150)}${if (episode.description.length > 150) "..." else ""}")
             episode.duration?.let { duration ->
-                sb.appendLine("   ⏱️ Duration: $duration")
+                sb.appendLine("   Duration: $duration")
             }
             episode.pubDate?.let { pubDate ->
-                sb.appendLine("   📅 Published: ${formatDate(pubDate)}")
+                sb.appendLine("   Published: ${formatDate(pubDate)}")
             }
             episode.audioUrl?.let { audioUrl ->
-                sb.appendLine("   🎵 Audio: ${audioUrl.take(60)}...")
+                sb.appendLine("   Audio: ${audioUrl.take(60)}...")
             }
         }
         
-        sb.appendLine("\n📊 Total ${episodes.size} episodes found")
+        sb.appendLine("\nTotal ${episodes.size} episodes found")
         return sb.toString()
     }
     

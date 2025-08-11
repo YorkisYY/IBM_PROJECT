@@ -20,12 +20,12 @@ class FilamentViewer(private val context: Context) {
     companion object {
         private const val TAG = "FilamentViewer"
         init { 
-            Log.e("FILAMENT_INIT", "🚀 FilamentViewer class 開始載入")
+            Log.e("FILAMENT_INIT", "FilamentViewer class starting to load")
             try {
                 Utils.init()
-                Log.e("FILAMENT_INIT", "✅ Utils.init() 完成")
+                Log.e("FILAMENT_INIT", "Utils.init() completed")
             } catch (e: Exception) {
-                Log.e("FILAMENT_INIT", "❌ Utils.init() 失敗: ${e.message}")
+                Log.e("FILAMENT_INIT", "Utils.init() failed: ${e.message}")
                 e.printStackTrace()
             }
         }
@@ -41,67 +41,67 @@ class FilamentViewer(private val context: Context) {
     private var swapChain: SwapChain? = null
     private var isInitialized = false
     
-    // 儲存 GLB 資產和位置回調
+    // Store GLB assets and position callbacks
     private var loadedAsset: FilamentAsset? = null
     var onModelPositionUpdated: ((Pair<Float, Float>?) -> Unit)? = null
 
     init {
-        Log.e("FILAMENT_INIT", "🔧 FilamentViewer 實例創建中...")
+        Log.e("FILAMENT_INIT", "FilamentViewer instance creating...")
     }
 
     fun getSurfaceView(): SurfaceView {
-        Log.e("FILAMENT_INIT", "🔧 getSurfaceView() 被調用")
+        Log.e("FILAMENT_INIT", "getSurfaceView() called")
         if (!::surfaceView.isInitialized) {
-            Log.e("FILAMENT_INIT", "🔧 開始初始化 SurfaceView...")
+            Log.e("FILAMENT_INIT", "Starting to initialize SurfaceView...")
             surfaceView = SurfaceView(context)
             setupFilament()
             setupScene()
-            Log.e("FILAMENT_INIT", "✅ SurfaceView 初始化完成")
+            Log.e("FILAMENT_INIT", "SurfaceView initialization completed")
         } else {
-            Log.e("FILAMENT_INIT", "ℹ️ SurfaceView 已存在，直接返回")
+            Log.e("FILAMENT_INIT", "SurfaceView already exists, returning directly")
         }
         return surfaceView
     }
 
     private fun setupFilament() {
-        Log.e("FILAMENT_INIT", "🔧 開始設置 Filament...")
+        Log.e("FILAMENT_INIT", "Starting to setup Filament...")
         try {
             engine = Engine.create()
-            Log.e("FILAMENT_INIT", "✅ Engine 創建成功")
+            Log.e("FILAMENT_INIT", "Engine created successfully")
             
             renderer = engine.createRenderer()
-            Log.e("FILAMENT_INIT", "✅ Renderer 創建成功")
+            Log.e("FILAMENT_INIT", "Renderer created successfully")
             
             scene = engine.createScene()
-            Log.e("FILAMENT_INIT", "✅ Scene 創建成功")
+            Log.e("FILAMENT_INIT", "Scene created successfully")
             
             view = engine.createView()
-            Log.e("FILAMENT_INIT", "✅ View 創建成功")
+            Log.e("FILAMENT_INIT", "View created successfully")
             
             camera = engine.createCamera(engine.entityManager.create())
-            Log.e("FILAMENT_INIT", "✅ Camera 創建成功")
+            Log.e("FILAMENT_INIT", "Camera created successfully")
 
             uiHelper = UiHelper(UiHelper.ContextErrorPolicy.DONT_CHECK)
             uiHelper.renderCallback = SurfaceCallback()
             uiHelper.attachTo(surfaceView)
-            Log.e("FILAMENT_INIT", "✅ UiHelper 設置成功")
+            Log.e("FILAMENT_INIT", "UiHelper setup successfully")
             
             isInitialized = true
-            Log.e("FILAMENT_INIT", "🎉 Filament 設置完成")
+            Log.e("FILAMENT_INIT", "Filament setup completed")
         } catch (ex: Exception) {
-            Log.e("FILAMENT_INIT", "❌ Filament 設置失敗: ${ex.message}")
+            Log.e("FILAMENT_INIT", "Filament setup failed: ${ex.message}")
             ex.printStackTrace()
         }
     }
 
     private fun setupScene() {
-        Log.d(TAG, "🔧 開始設置場景...")
+        Log.d(TAG, "Starting to setup scene...")
         try {
             camera.setProjection(45.0, 1.0, 0.1, 20.0, Camera.Fov.VERTICAL)
             camera.lookAt(0.0, 1.0, 6.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0)
             view.camera = camera
             view.scene = scene
-            Log.d(TAG, "✅ 相機設置成功")
+            Log.d(TAG, "Camera setup successfully")
 
             val light = engine.entityManager.create()
             LightManager.Builder(LightManager.Type.SUN)
@@ -110,110 +110,110 @@ class FilamentViewer(private val context: Context) {
                 .direction(0.0f, -1.0f, -1.0f)
                 .build(engine, light)
             scene.addEntity(light)
-            Log.d(TAG, "✅ 光源設置成功")
+            Log.d(TAG, "Light setup successfully")
             
-            Log.d(TAG, "🎉 場景設置完成")
+            Log.d(TAG, "Scene setup completed")
         } catch (ex: Exception) {
-            Log.e(TAG, "❌ 場景設置失敗: ${ex.message}")
+            Log.e(TAG, "Scene setup failed: ${ex.message}")
             ex.printStackTrace()
         }
     }
 
     fun loadGLBModel(assetPath: String) {
-        Log.d(TAG, "🔧 loadGLBModel() 被調用，路徑: $assetPath")
+        Log.d(TAG, "loadGLBModel() called, path: $assetPath")
         
         if (!isInitialized) {
-            Log.e(TAG, "❌ FilamentViewer 未初始化，無法載入模型")
+            Log.e(TAG, "FilamentViewer not initialized, cannot load model")
             return
         }
         
         try {
-            // 1. 檢查文件是否存在
-            Log.d(TAG, "🔍 步驟1: 檢查文件是否存在...")
+            // 1. Check if file exists
+            Log.d(TAG, "Step 1: Check if file exists...")
             val inputStream: InputStream = context.assets.open(assetPath)
             val fileSize = inputStream.available()
             inputStream.close()
-            Log.d(TAG, "✅ 文件存在！大小: $fileSize bytes")
+            Log.d(TAG, "File exists! Size: $fileSize bytes")
             
-            // 2. 創建載入器
-            Log.d(TAG, "🔧 步驟2: 創建載入器...")
+            // 2. Create loaders
+            Log.d(TAG, "Step 2: Create loaders...")
             val materialProvider = com.google.android.filament.gltfio.UbershaderProvider(engine)
             val assetLoader = AssetLoader(engine, materialProvider, engine.entityManager)
             val resourceLoader = ResourceLoader(engine)
-            Log.d(TAG, "✅ 載入器創建成功")
+            Log.d(TAG, "Loaders created successfully")
 
-            // 3. 讀取並創建資產
-            Log.d(TAG, "🔧 步驟3: 讀取文件並創建資產...")
+            // 3. Read and create asset
+            Log.d(TAG, "Step 3: Read file and create asset...")
             val inputStream2: InputStream = context.assets.open(assetPath)
             val bytes = inputStream2.readBytes()
             inputStream2.close()
-            Log.d(TAG, "✅ 文件讀取成功，大小: ${bytes.size} bytes")
+            Log.d(TAG, "File read successfully, size: ${bytes.size} bytes")
             
             val asset = assetLoader.createAsset(ByteBuffer.wrap(bytes))
             if (asset == null) {
-                Log.e(TAG, "❌ 步驟3失敗: FilamentAsset 創建失敗！")
+                Log.e(TAG, "Step 3 failed: FilamentAsset creation failed!")
                 return
             }
-            Log.d(TAG, "✅ FilamentAsset 創建成功")
+            Log.d(TAG, "FilamentAsset created successfully")
                 
-            // 4. 載入資源
-            Log.d(TAG, "🔧 步驟4: 載入資源...")
+            // 4. Load resources
+            Log.d(TAG, "Step 4: Load resources...")
             resourceLoader.loadResources(asset)
             asset.releaseSourceData()
-            Log.d(TAG, "✅ 資源載入完成")
+            Log.d(TAG, "Resources loaded successfully")
             
-            // 5. 儲存引用
+            // 5. Store reference
             loadedAsset = asset
-            Log.d(TAG, "✅ Asset 引用已儲存")
+            Log.d(TAG, "Asset reference stored")
             
-            // 6. 設置變換（縮放 + 270度旋轉）
-            Log.d(TAG, "🔧 步驟5: 設置模型變換...")
+            // 6. Setup transform (scale + 270 degree rotation)
+            Log.d(TAG, "Step 5: Setup model transform...")
             val tm = engine.transformManager
             val rootTransform = tm.getInstance(asset.root)
             
             if (rootTransform != 0) {
                 val scale = 0.5f
                 
-                // 270度旋轉 = -90度 = -PI/2 弧度
-                val rotationY = -PI.toFloat() / 2f  // 270度旋轉
+                // 270 degree rotation = -90 degrees = -PI/2 radians
+                val rotationY = -PI.toFloat() / 2f  // 270 degree rotation
                 val cosY = cos(rotationY)
                 val sinY = sin(rotationY)
                 
-                // 組合矩陣：縮放 + Y軸旋轉270度
+                // Combined matrix: scale + Y-axis 270 degree rotation
                 tm.setTransform(rootTransform, floatArrayOf(
-                    scale * cosY,  0f, scale * sinY,  0f,  // 第一行
-                    0f,            scale, 0f,          0f,  // 第二行
-                    scale * -sinY, 0f, scale * cosY,  0f,  // 第三行
-                    0f,            0f, 0f,            1f   // 第四行
+                    scale * cosY,  0f, scale * sinY,  0f,  // First row
+                    0f,            scale, 0f,          0f,  // Second row
+                    scale * -sinY, 0f, scale * cosY,  0f,  // Third row
+                    0f,            0f, 0f,            1f   // Fourth row
                 ))
-                Log.d(TAG, "✅ 模型變換設置成功 (縮放: $scale, Y軸旋轉: 270度)")
+                Log.d(TAG, "Model transform setup successfully (scale: $scale, Y-axis rotation: 270 degrees)")
             } else {
-                Log.w(TAG, "⚠️ 無法獲取根變換")
+                Log.w(TAG, "Unable to get root transform")
             }
             
-            // 7. 添加到場景
-            Log.d(TAG, "🔧 步驟6: 添加實體到場景...")
+            // 7. Add to scene
+            Log.d(TAG, "Step 6: Add entities to scene...")
             val entityArray = asset.entities
-            Log.d(TAG, "📊 要添加的實體數量: ${entityArray.size}")
+            Log.d(TAG, "Number of entities to add: ${entityArray.size}")
             
             scene.addEntities(entityArray)
-            Log.d(TAG, "✅ 所有實體已添加到場景")
+            Log.d(TAG, "All entities added to scene")
             
-            Log.d(TAG, "🎉🎉🎉 GLB 模型載入完全成功！🎉🎉🎉")
+            Log.d(TAG, "GLB model loaded completely successfully!")
         } catch (ex: Exception) {
-            Log.e(TAG, "❌ GLB 載入過程中發生錯誤: ${ex.message}")
+            Log.e(TAG, "Error occurred during GLB loading: ${ex.message}")
             ex.printStackTrace()
         }
     }
 
     /**
-     * 獲取模型最高點的螢幕位置（以模型中軸為基準）
-     * 根據文字內容動態調整對話框大小
+     * Get screen position of model's highest point (based on model's center axis)
+     * Dynamically adjust dialog size based on text content
      */
     fun getModelTopScreenPosition(messageText: String = ""): Triple<Float, Float, Float>? {
-        Log.d(TAG, "🔧 getModelTopScreenPosition() 被調用，文字長度: ${messageText.length}")
+        Log.d(TAG, "getModelTopScreenPosition() called, text length: ${messageText.length}")
         if (!isInitialized || loadedAsset == null) {
-            Log.w(TAG, "⚠️ 無法計算位置：isInitialized=$isInitialized, hasAsset=${loadedAsset != null}")
+            Log.w(TAG, "Cannot calculate position: isInitialized=$isInitialized, hasAsset=${loadedAsset != null}")
             return null
         }
         
@@ -223,99 +223,99 @@ class FilamentViewer(private val context: Context) {
             val rootTransform = tm.getInstance(asset.root)
             
             if (rootTransform == 0) {
-                Log.w(TAG, "⚠️ 無法獲取根變換，使用螢幕中央")
+                Log.w(TAG, "Unable to get root transform, using screen center")
                 return getScreenCenterWithWidth(messageText)
             }
             
-            // 獲取模型的邊界框
+            // Get model's bounding box
             val aabb = asset.boundingBox
             
-            // 計算模型的最高點（Y軸最大值）和中心X座標
-            val modelCenterX = aabb.center[0]  // 模型中心X座標
-            val modelTopY = aabb.center[1] + aabb.halfExtent[1]  // 最高點
+            // Calculate model's highest point (Y-axis maximum) and center X coordinate
+            val modelCenterX = aabb.center[0]  // Model center X coordinate
+            val modelTopY = aabb.center[1] + aabb.halfExtent[1]  // Highest point
             val modelCenterZ = aabb.center[2]
             
-            // 世界座標中的模型頂部中心點
+            // Model top center point in world coordinates
             val worldPosition = floatArrayOf(modelCenterX, modelTopY, modelCenterZ, 1f)
             
-            // 修正：使用 Filament 1.5.6 的正確 API
-            // getViewMatrix 返回 FloatArray
+            // Fix: Use correct API for Filament 1.5.6
+            // getViewMatrix returns FloatArray
             val viewMatrix = camera.getViewMatrix(FloatArray(16))
-            // getProjectionMatrix 返回 DoubleArray
+            // getProjectionMatrix returns DoubleArray
             val projMatrixDouble = camera.getProjectionMatrix(DoubleArray(16))
-            // 轉換為 FloatArray 供 worldToScreen 使用
+            // Convert to FloatArray for worldToScreen usage
             val projMatrix = FloatArray(16) { projMatrixDouble[it].toFloat() }
             
-            // 將世界座標轉換為螢幕座標
+            // Convert world coordinates to screen coordinates
             val screenPosition = worldToScreen(worldPosition, viewMatrix, projMatrix, view.viewport)
             
             if (screenPosition != null) {
                 val screenWidth = view.viewport.width.toFloat()
                 
-                // 🔧 動態計算對話框寬度
+                // Dynamically calculate dialog width
                 val bubbleWidth = calculateBubbleWidth(messageText, screenWidth)
                 val bubbleHalfWidth = bubbleWidth / 2f
                 
-                // 🔧 安全邊距
-                val safeMargin = 20f  // 20px 安全邊距
+                // Safe margins
+                val safeMargin = 20f  // 20px safe margin
                 val leftBound = safeMargin + bubbleHalfWidth
                 val rightBound = screenWidth - safeMargin - bubbleHalfWidth
                 
-                // 調整X座標，確保對話框不會超出邊界
+                // Adjust X coordinate to ensure dialog doesn't exceed boundaries
                 val adjustedX = screenPosition.first.coerceIn(leftBound, rightBound)
                 
-                // 🔧 Y軸安全檢查 - 避免遮蓋狀態欄
-                val topMargin = 80f  // 避免遮蓋狀態欄
+                // Y-axis safety check - avoid covering status bar
+                val topMargin = 80f  // Avoid covering status bar
                 val safeY = (screenPosition.second - 10f).coerceAtLeast(topMargin)
                 
-                Log.d(TAG, "📍 動態對話框位置: (原始: ${screenPosition.first}, 調整後: $adjustedX, Y: $safeY)")
-                Log.d(TAG, "📏 動態寬度: 螢幕寬度=$screenWidth, 對話框寬度=$bubbleWidth")
+                Log.d(TAG, "Dynamic dialog position: (original: ${screenPosition.first}, adjusted: $adjustedX, Y: $safeY)")
+                Log.d(TAG, "Dynamic width: screen width=$screenWidth, dialog width=$bubbleWidth")
                 val centerX = screenWidth / 2f
                 return Triple(centerX, safeY, bubbleWidth)
             } else {
-                Log.w(TAG, "⚠️ 無法計算螢幕位置，使用螢幕中央")
+                Log.w(TAG, "Unable to calculate screen position, using screen center")
                 return getScreenCenterWithWidth(messageText)
             }
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 位置計算錯誤: ${e.message}")
+            Log.e(TAG, "Position calculation error: ${e.message}")
             return getScreenCenterWithWidth(messageText)
         }
     }
     
     /**
-     * 動態計算對話框寬度
-     * 根據文字長度和內容智能調整
+     * Dynamically calculate dialog width
+     * Intelligently adjust based on text length and content
      */
     private fun calculateBubbleWidth(messageText: String, screenWidth: Float): Float {
         val textLength = messageText.length
         
         return when {
             textLength <= 10 -> {
-                // 極短文字 (如: "好的", "謝謝")
-                (screenWidth * 0.25f).coerceAtLeast(120f)  // 最小120px
+                // Very short text (e.g.: "OK", "Thanks")
+                (screenWidth * 0.25f).coerceAtLeast(120f)  // Minimum 120px
             }
             textLength <= 30 -> {
-                // 短文字 (如: "你好！我是3D貓咪")  
+                // Short text (e.g.: "Hello! I'm a 3D cat")  
                 screenWidth * 0.45f
             }
             textLength <= 60 -> {
-                // 中等長度 (如: 一般對話)
+                // Medium length (e.g.: general conversation)
                 screenWidth * 0.65f  
             }
             textLength <= 100 -> {
-                // 較長文字
+                // Longer text
                 screenWidth * 0.75f
             }
             else -> {
-                // 很長文字 (如: 長篇解釋)
+                // Very long text (e.g.: long explanations)
                 screenWidth * 0.85f
             }
-        }.coerceAtMost(screenWidth - 40f)  // 最大寬度 = 螢幕寬度 - 40px邊距
+        }.coerceAtMost(screenWidth - 40f)  // Maximum width = screen width - 40px margin
     }
     
     /**
-     * 獲取螢幕中央位置（包含動態寬度）
+     * Get screen center position (including dynamic width)
      */
     private fun getScreenCenterWithWidth(messageText: String): Triple<Float, Float, Float> {
         val screenWidth = view.viewport.width.toFloat()
@@ -330,8 +330,8 @@ class FilamentViewer(private val context: Context) {
     }
     
     /**
-     * 將世界座標轉換為螢幕座標
-     * 使用 Filament 1.5.6 的正確 API
+     * Convert world coordinates to screen coordinates
+     * Using correct API for Filament 1.5.6
      */
     private fun worldToScreen(
         worldPos: FloatArray, 
@@ -340,33 +340,33 @@ class FilamentViewer(private val context: Context) {
         viewport: Viewport
     ): Pair<Float, Float>? {
         
-        // 組合視圖和投影矩陣 (MVP = Projection * View)
+        // Combine view and projection matrices (MVP = Projection * View)
         val mvpMatrix = FloatArray(16)
         multiplyMM(mvpMatrix, 0, projMatrix, 0, viewMatrix, 0)
         
         val clipSpace = FloatArray(4)
         
-        // 將世界座標轉換為裁剪空間
+        // Convert world coordinates to clip space
         clipSpace[0] = worldPos[0] * mvpMatrix[0] + worldPos[1] * mvpMatrix[4] + worldPos[2] * mvpMatrix[8] + worldPos[3] * mvpMatrix[12]
         clipSpace[1] = worldPos[0] * mvpMatrix[1] + worldPos[1] * mvpMatrix[5] + worldPos[2] * mvpMatrix[9] + worldPos[3] * mvpMatrix[13]
         clipSpace[2] = worldPos[0] * mvpMatrix[2] + worldPos[1] * mvpMatrix[6] + worldPos[2] * mvpMatrix[10] + worldPos[3] * mvpMatrix[14]
         clipSpace[3] = worldPos[0] * mvpMatrix[3] + worldPos[1] * mvpMatrix[7] + worldPos[2] * mvpMatrix[11] + worldPos[3] * mvpMatrix[15]
         
-        // 透視除法
+        // Perspective division
         if (abs(clipSpace[3]) < 0.0001f) return null
         
         val ndcX = clipSpace[0] / clipSpace[3]
         val ndcY = clipSpace[1] / clipSpace[3]
         
-        // 轉換為螢幕座標
+        // Convert to screen coordinates
         val screenX = (ndcX + 1f) * 0.5f * viewport.width
-        val screenY = (1f - ndcY) * 0.5f * viewport.height  // Y軸翻轉
+        val screenY = (1f - ndcY) * 0.5f * viewport.height  // Y-axis flip
         
         return Pair(screenX, screenY)
     }
     
     /**
-     * 矩陣乘法輔助函數
+     * Matrix multiplication helper function
      */
     private fun multiplyMM(result: FloatArray, resultOffset: Int, lhs: FloatArray, lhsOffset: Int, rhs: FloatArray, rhsOffset: Int) {
         for (i in 0..3) {
@@ -386,31 +386,31 @@ class FilamentViewer(private val context: Context) {
 
     private inner class SurfaceCallback : UiHelper.RendererCallback {
         override fun onNativeWindowChanged(surface: Surface?) {
-            Log.d(TAG, "🔧 Surface 改變: $surface")
+            Log.d(TAG, "Surface changed: $surface")
             swapChain?.let { 
                 engine.destroySwapChain(it)
-                Log.d(TAG, "🗑️ 舊 SwapChain 已銷毀")
+                Log.d(TAG, "Old SwapChain destroyed")
             }
             surface?.let { 
                 swapChain = engine.createSwapChain(it)
-                Log.d(TAG, "✅ 新 SwapChain 創建成功")
+                Log.d(TAG, "New SwapChain created successfully")
             }
         }
 
         override fun onDetachedFromSurface() {
-            Log.d(TAG, "🔧 Surface 分離")
+            Log.d(TAG, "Surface detached")
             swapChain?.let { 
                 engine.destroySwapChain(it)
                 swapChain = null
-                Log.d(TAG, "🗑️ SwapChain 已銷毀")
+                Log.d(TAG, "SwapChain destroyed")
             }
         }
 
         override fun onResized(width: Int, height: Int) {
-            Log.d(TAG, "🔧 Surface 大小改變: ${width}x${height}")
+            Log.d(TAG, "Surface size changed: ${width}x${height}")
             view.viewport = Viewport(0, 0, width, height)
             camera.setProjection(45.0, width.toDouble() / height, 0.1, 20.0, Camera.Fov.VERTICAL)
-            Log.d(TAG, "✅ 視口和相機已更新")
+            Log.d(TAG, "Viewport and camera updated")
         }
     }
 
@@ -426,17 +426,17 @@ class FilamentViewer(private val context: Context) {
                         renderer.render(view)
                         renderer.endFrame()
                         
-                        // 每 30 幀更新一次位置並輸出狀態
+                        // Update position every 30 frames and output status
                         frameCount++
                         if (frameCount >= 30) {
                             frameCount = 0
-                            // 更新模型位置 - 傳入空字串作為預設
+                            // Update model position - pass empty string as default
                             val position = getModelTopScreenPosition("")
-                            // 轉換為舊格式的回調（保持相容性）
+                            // Convert to old format callback (maintain compatibility)
                             val oldFormat = position?.let { Pair(it.first, it.second) }
                             onModelPositionUpdated?.invoke(oldFormat)
                             
-                            Log.d(TAG, "📊 渲染狀態: 正常運行中... (Asset: ${loadedAsset != null})")
+                            Log.d(TAG, "Render status: Running normally... (Asset: ${loadedAsset != null})")
                         }
                     }
                 }
@@ -445,30 +445,30 @@ class FilamentViewer(private val context: Context) {
     }
 
     fun onResume() {
-        Log.d(TAG, "🔧 onResume")
+        Log.d(TAG, "onResume")
         if (isInitialized) {
             Choreographer.getInstance().postFrameCallback(frameCallback)
-            Log.d(TAG, "✅ FrameCallback 已註冊 - 渲染循環啟動")
+            Log.d(TAG, "FrameCallback registered - render loop started")
         } else {
-            Log.w(TAG, "⚠️ onResume 被調用但 Filament 未初始化")
+            Log.w(TAG, "onResume called but Filament not initialized")
         }
     }
 
     fun onPause() {
-        Log.d(TAG, "🔧 onPause")
+        Log.d(TAG, "onPause")
         if (isInitialized) {
             Choreographer.getInstance().removeFrameCallback(frameCallback)
-            Log.d(TAG, "✅ FrameCallback 已移除")
+            Log.d(TAG, "FrameCallback removed")
         }
     }
 
     fun onDestroy() {
-        Log.d(TAG, "🔧 onDestroy")
+        Log.d(TAG, "onDestroy")
         if (isInitialized) {
             Choreographer.getInstance().removeFrameCallback(frameCallback)
             loadedAsset = null
             engine.destroy()
-            Log.d(TAG, "✅ 資源已清理")
+            Log.d(TAG, "Resources cleaned up")
         }
     }
 }

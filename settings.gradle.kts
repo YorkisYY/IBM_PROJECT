@@ -11,7 +11,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // SceneView 需要的倉庫
+
         maven { url = uri("https://jitpack.io") }
     }
 }

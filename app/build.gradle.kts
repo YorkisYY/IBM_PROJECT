@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.ibm_project"
-        minSdk = 24  // ARCore 最低要求
+        minSdk = 24  // ARCore minimum requirement
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -51,12 +51,12 @@ android {
         kotlinCompilerExtensionVersion = "1.5.8"
     }
 
-    // 保持 Filament 檔案壓縮 (重要!)
+    // Keep Filament file compression (Important!)
     androidResources {
         noCompress += listOf("filamat", "ktx")
     }
 
-    // ARCore 相關配置
+    // ARCore related configuration
     packaging {
         resources {
             pickFirsts += listOf("**/libc++_shared.so", "**/libjsc.so")
@@ -65,17 +65,17 @@ android {
 }
 
 dependencies {
-    // ===== SceneView（簡化版 - 快速開發）=====
+    // ===== SceneView (Simplified version - Rapid development) =====
     implementation("io.github.sceneview:arsceneview:2.3.0")  // AR + 3D
-    implementation("io.github.sceneview:sceneview:2.3.0")    // 純 3D
+    implementation("io.github.sceneview:sceneview:2.3.0")    // Pure 3D
 
-    // ===== 原生 Filament 1.5.6（完全控制版）=====
+    // ===== Native Filament 1.5.6 (Full control version) =====
     implementation("com.google.ar:core:1.41.0")
     implementation("com.google.android.filament:filament-android:1.5.6")
     implementation("com.google.android.filament:gltfio-android:1.5.6")
     implementation("com.google.android.filament:filament-utils-android:1.5.6")
 
-    // Android 核心依賴
+    // Android core dependencies
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
@@ -83,7 +83,7 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("androidx.fragment:fragment-ktx:1.6.2")
 
-    // Compose BOM 和核心依賴 - 使用 BOM 統一管理版本
+    // Compose BOM and core dependencies - Use BOM for unified version management
     implementation(platform("androidx.compose:compose-bom:2024.02.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -93,39 +93,39 @@ dependencies {
     implementation("androidx.compose.runtime:runtime-livedata")
     implementation("androidx.activity:activity-compose:1.8.2")
     
-    // ===== Material Icons - 讓 BOM 管理版本 =====
-    implementation("androidx.compose.material:material-icons-extended")  // 移除版本號，讓 BOM 控制
+    // ===== Material Icons - Let BOM manage version =====
+    implementation("androidx.compose.material:material-icons-extended")  // Remove version number, let BOM control
 
-    // ===== 網路 API 依賴 =====
+    // ===== Network API dependencies =====
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("com.google.code.gson:gson:2.10.1")
 
-    // 圖片載入
+    // Image loading
     implementation("com.github.bumptech.glide:glide:4.16.0")
 
-    // ViewModel 和 LiveData
+    // ViewModel and LiveData
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("io.github.sceneview:sceneview:2.3.0")
     implementation("io.github.sceneview:arsceneview:2.3.0")
-    // 協程
+    // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 
-    // 數學運算 (3D 計算)
+    // Mathematical operations (3D calculations)
     implementation("dev.romainguy:kotlin-math:1.5.3")
 
-    // 權限處理
+    // Permission handling
     implementation("pub.devrel:easypermissions:3.0.0")
 
-    // 序列化
+    // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 
-    // 測試依賴
+    // Test dependencies
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")

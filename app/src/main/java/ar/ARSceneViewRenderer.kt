@@ -174,7 +174,7 @@ class ARSceneViewRenderer {
      */
     fun incrementModelCount() {
         placedModelsCount.value++
-        Log.d(TAG, "📈 Model count incremented to: ${placedModelsCount.value}")
+        Log.d(TAG, " Model count incremented to: ${placedModelsCount.value}")
     }
     
     /**

@@ -18,8 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * 浮動在 3D 模型上方的對話框組件 - 水平置中保留 Y 軸位置
- * 支持 70% 螢幕寬度、最高 200dp、內容滾動
+ * Floating dialog component above 3D model - horizontally centered while preserving Y axis position
+ * Supports 70% screen width, maximum 200dp height, content scrolling
  */
 @Composable
 fun ChatBubble(
@@ -35,18 +35,18 @@ fun ChatBubble(
         val density = LocalDensity.current
         val scrollState = rememberScrollState()
         
-        // 計算 70% 螢幕寬度
+        // Calculate 70% screen width
         val screenWidth = configuration.screenWidthDp.dp
         val bubbleWidth = screenWidth * 0.7f
         
-        // 最大高度 200dp
+        // Maximum height 200dp
         val maxHeight = 200.dp
         
         Box(
             modifier = modifier
-                .fillMaxWidth()  // 佔滿寬度
-                .wrapContentSize(Alignment.TopCenter)  // 內容自適應大小並水平置中
-                .offset(y = with(density) { position.second.dp })  // 保留 GLB Y 軸位置
+                .fillMaxWidth()  // Fill width
+                .wrapContentSize(Alignment.TopCenter)  // Content adaptive size and horizontally centered
+                .offset(y = with(density) { position.second.dp })  // Preserve GLB Y axis position
                 .width(bubbleWidth)
                 .heightIn(max = maxHeight)
                 .shadow(
@@ -57,13 +57,13 @@ fun ChatBubble(
                     color = backgroundColor,
                     shape = RoundedCornerShape(16.dp)
                 )
-                .padding(horizontal = 12.dp, vertical = 8.dp) // 緊湊間距
+                .padding(horizontal = 12.dp, vertical = 8.dp) // Compact spacing
         ) {
             Text(
                 text = message,
                 color = textColor,
                 fontSize = 14.sp,
-                lineHeight = 16.sp, // 緊湊行距
+                lineHeight = 16.sp, // Compact line height
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.verticalScroll(scrollState)
             )
@@ -72,7 +72,7 @@ fun ChatBubble(
 }
 
 /**
- * 簡化版對話框組件（用於測試）- 水平置中保留 Y 軸位置
+ * Simplified dialog component (for testing) - horizontally centered while preserving Y axis position
  */
 @Composable
 fun SimpleChatBubble(
@@ -107,7 +107,7 @@ fun SimpleChatBubble(
 }
 
 /**
- * 自適應高度的對話框組件 - 水平置中保留 Y 軸位置
+ * Adaptive height dialog component - horizontally centered while preserving Y axis position
  */
 @Composable
 fun AdaptiveChatBubble(
@@ -124,7 +124,7 @@ fun AdaptiveChatBubble(
         val screenWidth = configuration.screenWidthDp.dp
         val bubbleWidth = screenWidth * 0.7f
         
-        // 根據文字長度動態調整最大高度
+        // Dynamically adjust maximum height based on text length
         val dynamicMaxHeight = when {
             message.length <= 50 -> 60.dp
             message.length <= 150 -> 120.dp
@@ -140,7 +140,7 @@ fun AdaptiveChatBubble(
                 .heightIn(min = 40.dp, max = dynamicMaxHeight)
                 .shadow(8.dp, RoundedCornerShape(16.dp))
                 .background(
-                    color = Color(0xFF4CAF50), // 綠色主題
+                    color = Color(0xFF4CAF50), // Green theme
                     shape = RoundedCornerShape(16.dp)
                 )
                 .padding(12.dp)

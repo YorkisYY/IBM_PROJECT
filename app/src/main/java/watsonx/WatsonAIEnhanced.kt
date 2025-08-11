@@ -45,7 +45,7 @@ object WatsonAIEnhanced {
     private var cachedToken: String? = null
     private var tokenExpirationTime: Long = 0
     
-    // 創建 PromptManager 實例
+    // Create PromptManager instance
     private val promptManager = PromptManager()
     
     fun initialize(context: Context) {
@@ -54,7 +54,7 @@ object WatsonAIEnhanced {
         NewsFunctions.initialize(context)
         PodcastFunctions.initialize(context)
         LocationFunctions.initialize(context)
-        Log.d(TAG, "✅ WatsonAI Enhanced service initialized (supports weather + SMS + news + podcast + context)")
+        Log.d(TAG, "WatsonAI Enhanced service initialized (supports weather + SMS + news + podcast + context)")
     }
     
     /**
@@ -62,7 +62,7 @@ object WatsonAIEnhanced {
      */
     suspend fun getEnhancedAIResponse(userMessage: String): AIResult {
         return try {
-            Log.d(TAG, "🚀 Starting enhanced AI request processing: $userMessage")
+            Log.d(TAG, "Starting enhanced AI request processing: $userMessage")
             
             if (userMessage.trim().isEmpty()) {
                 return AIResult(
@@ -72,15 +72,15 @@ object WatsonAIEnhanced {
                 )
             }
             
-            // 🆕 使用 ContextManager 添加用户消息到历史记录
+            // Add user message to history using ContextManager
             ContextManager.addToHistory(userMessage, "user")
             
             val response = processWithFunctionCalling(userMessage.trim())
             
-            // 🆕 使用 ContextManager 添加助手响应到历史记录
+            // Add assistant response to history using ContextManager
             ContextManager.addToHistory(response, "assistant")
             
-            Log.d(TAG, "🎉 Enhanced AI response processing completed")
+            Log.d(TAG, "Enhanced AI response processing completed")
             AIResult(
                 success = true,
                 response = response,
@@ -88,7 +88,7 @@ object WatsonAIEnhanced {
             )
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Enhanced AI processing failed: ${e.message}")
+            Log.e(TAG, "Enhanced AI processing failed: ${e.message}")
             AIResult(
                 success = false,
                 response = "",
@@ -101,12 +101,12 @@ object WatsonAIEnhanced {
      * Process Function Calling - supports weather and SMS
      */
     private suspend fun processWithFunctionCalling(userMessage: String): String {
-        // Step 1: 使用 PromptManager 检查是否需要函数调用
+        // Step 1: Use PromptManager to check if function call is needed
         if (promptManager.mightNeedFunctionCall(userMessage)) {
-            Log.d(TAG, "🔍 Detected potential function call needed, using function calling prompt")
+            Log.d(TAG, "Detected potential function call needed, using function calling prompt")
             return handleWithFunctionCallingPrompt(userMessage)
         } else {
-            Log.d(TAG, "💬 Normal conversation, using regular prompt")
+            Log.d(TAG, "Normal conversation, using regular prompt")
             return handleNormalConversation(userMessage)
         }
     }
@@ -115,77 +115,77 @@ object WatsonAIEnhanced {
      * Process using Function Calling Prompt
      */
     private suspend fun handleWithFunctionCallingPrompt(userMessage: String): String {
-        Log.d(TAG, "🔧 Using Function Calling Prompt")
+        Log.d(TAG, "Using Function Calling Prompt")
         
-        // 使用 ContextManager 构建带上下文的函数调用提示词
+        // Use ContextManager to build contextual function calling prompt
         val functionPrompt = ContextManager.buildContextualPrompt(userMessage, isFunction = true)
         
         // Call Watson AI
         val aiResponse = callWatsonAI(functionPrompt)
         
-        // 使用 PromptManager 检查是否包含函数调用
+        // Use PromptManager to check if function call is contained
         return if (promptManager.containsFunctionCall(aiResponse)) {
-            Log.d(TAG, "✅ AI recognized need to call function")
+            Log.d(TAG, "AI recognized need to call function")
             executeFunctionAndGenerateResponse(aiResponse, userMessage)
         } else {
-            Log.d(TAG, "💬 AI decided to answer directly")
+            Log.d(TAG, "AI decided to answer directly")
             aiResponse
         }
     }
     
     /**
-     * 🆕 Execute function and generate final response - supports weather and SMS
+     * Execute function and generate final response - supports weather and SMS
      */
     private suspend fun executeFunctionAndGenerateResponse(aiResponse: String, originalMessage: String): String {
         return try {
             // Extract function call
             val functionCall = extractFunctionCall(aiResponse)
             if (functionCall == null) {
-                Log.w(TAG, "⚠️ Cannot parse function call, fallback to original response")
+                Log.w(TAG, "Cannot parse function call, fallback to original response")
                 return aiResponse
             }
             
-            // 🆕🆕🆕 加入這段：修正錯誤的函數名稱 🆕🆕🆕
+            // Add this section: Fix incorrect function names
             var correctedName = functionCall.name
             if (functionCall.name == "read_latest_message") {
                 correctedName = "get_latest_message"
-                Log.d(TAG, "🔄 修正函數名稱: read_latest_message → get_latest_message")
+                Log.d(TAG, "Fixed function name: read_latest_message → get_latest_message")
             }
             
-            Log.d(TAG, "🎯 Executing function: $correctedName")  // 改用 correctedName
-            Log.d(TAG, "📝 Function parameters: ${functionCall.arguments}")
+            Log.d(TAG, "Executing function: $correctedName")
+            Log.d(TAG, "Function parameters: ${functionCall.arguments}")
             
-            // 🆕 Call corresponding service based on function type
+            // Call corresponding service based on function type
             val functionResult = when {
-                correctedName.startsWith("get_") && correctedName.contains("weather") -> {  // 改用 correctedName
+                correctedName.startsWith("get_") && correctedName.contains("weather") -> {
                     WeatherFunctions.execute(correctedName, functionCall.arguments)
                 }
-                correctedName in listOf(  // 改用 correctedName
+                correctedName in listOf(
                     "read_unread_messages", "read_recent_messages", "get_message_summary",
                     "get_message_by_index", "get_latest_message"
                 ) -> {
                     SMSFunctions.execute(correctedName, functionCall.arguments)
                 }
-                correctedName in listOf(  // 改用 correctedName
+                correctedName in listOf(
                     "get_current_location", "get_user_location", "get_location_info"
                 ) -> {
                     LocationFunctions.execute(correctedName, functionCall.arguments)
                 }
-                // ... 其他函數判斷也改用 correctedName
+                // Other function checks also use correctedName
                 else -> {
-                    Log.w(TAG, "⚠️ Unknown function type: $correctedName")
+                    Log.w(TAG, "Unknown function type: $correctedName")
                     "Sorry, unrecognized function request."
                 }
             }
             
-            Log.d(TAG, "✅ Function execution completed")
-            Log.d(TAG, "📊 Function returned:\n$functionResult")
+            Log.d(TAG, "Function execution completed")
+            Log.d(TAG, "Function returned:\n$functionResult")
             
             // Generate final user-friendly response
-            generateFinalResponse(originalMessage, functionResult, correctedName)  // 改用 correctedName
+            generateFinalResponse(originalMessage, functionResult, correctedName)
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Function execution failed: ${e.message}")
+            Log.e(TAG, "Function execution failed: ${e.message}")
             "Sorry, there was a problem processing your request, please try again later."
         }
     }
@@ -222,7 +222,7 @@ object WatsonAIEnhanced {
             if (braceCount != 0) return null // JSON incomplete
             
             val jsonStr = response.substring(jsonStart, jsonEnd + 1)
-            Log.d(TAG, "🔍 Extracted JSON: $jsonStr")
+            Log.d(TAG, "Extracted JSON: $jsonStr")
             
             val jsonElement = json.parseToJsonElement(jsonStr)
             val jsonObject = jsonElement.jsonObject
@@ -233,25 +233,25 @@ object WatsonAIEnhanced {
             FunctionCall(name, arguments)
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Failed to parse function call: ${e.message}")
+            Log.e(TAG, "Failed to parse function call: ${e.message}")
             null
         }
     }
     
     /**
-     * 🆕 Generate final user-friendly response - supports multiple functions
+     * Generate final user-friendly response - supports multiple functions
      */
     private suspend fun generateFinalResponse(originalMessage: String, functionResult: String, functionName: String): String {
-        // 使用 PromptManager 构建最终响应提示词
+        // Use PromptManager to build final response prompt
         val finalPrompt = promptManager.buildFinalResponsePrompt(originalMessage, functionResult, functionName)
         
         return try {
             val finalResponse = callWatsonAI(finalPrompt)
-            Log.d(TAG, "🎉 Final answer generation completed")
+            Log.d(TAG, "Final answer generation completed")
             finalResponse
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Failed to generate final answer: ${e.message}")
-            // 使用 PromptManager 生成回退响应
+            Log.e(TAG, "Failed to generate final answer: ${e.message}")
+            // Use PromptManager to generate fallback response
             promptManager.generateFallbackResponse(functionResult, functionName)
         }
     }
@@ -260,21 +260,21 @@ object WatsonAIEnhanced {
      * Process normal conversation - with context
      */
     private suspend fun handleNormalConversation(userMessage: String): String {
-        Log.d(TAG, "💬 Processing normal conversation")
-        // 使用 ContextManager 构建带上下文的普通对话提示词
+        Log.d(TAG, "Processing normal conversation")
+        // Use ContextManager to build contextual normal conversation prompt
         val contextualPrompt = ContextManager.buildContextualPrompt(userMessage, isFunction = false)
         return callWatsonAI(contextualPrompt)
     }
     
     /**
-     * 🆕 Clear conversation history - 委托给 ContextManager
+     * Clear conversation history - delegate to ContextManager
      */
     fun clearConversationHistory() {
         ContextManager.clearConversationHistory()
     }
     
     /**
-     * 🆕 Get conversation history summary - 委托给 ContextManager
+     * Get conversation history summary - delegate to ContextManager
      */
     fun getConversationSummary(): String {
         return ContextManager.getConversationSummary()
@@ -296,8 +296,8 @@ object WatsonAIEnhanced {
             )
         )
         
-        Log.d(TAG, "📤 Sending request to Watson AI")
-        Log.d(TAG, "📝 Prompt length: ${prompt.length}")
+        Log.d(TAG, "Sending request to Watson AI")
+        Log.d(TAG, "Prompt length: ${prompt.length}")
         
         val request = Request.Builder()
             .url(url)
@@ -309,22 +309,22 @@ object WatsonAIEnhanced {
         
         try {
             val response = client.newCall(request).execute()
-            Log.d(TAG, "📨 Response status: ${response.code}")
+            Log.d(TAG, "Response status: ${response.code}")
             
             if (!response.isSuccessful) {
                 val errorText = response.body?.string() ?: ""
-                Log.e(TAG, "❌ API Error: $errorText")
+                Log.e(TAG, "API Error: $errorText")
                 throw IOException("Watson AI API Error: ${response.code} - $errorText")
             }
             
             val responseBody = response.body?.string()
-            Log.d(TAG, "✅ Received response: ${responseBody?.take(200)}...")
+            Log.d(TAG, "Received response: ${responseBody?.take(200)}...")
             
             val data = json.decodeFromString<WatsonResponse>(responseBody!!)
             return@withContext parseResponse(data)
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Watson AI call failed: ${e.message}")
+            Log.e(TAG, "Watson AI call failed: ${e.message}")
             throw e
         }
     }
@@ -333,47 +333,47 @@ object WatsonAIEnhanced {
      * Parse Watson AI response - based on your existing logic
      */
     private fun parseResponse(data: WatsonResponse): String {
-        Log.d(TAG, "🔍 Parsing response data...")
+        Log.d(TAG, "Parsing response data...")
         
         // Try various possible response formats
         data.choices?.firstOrNull()?.let { choice ->
             choice.message?.content?.let { 
-                Log.d(TAG, "✅ Parse successful - chat format")
+                Log.d(TAG, "Parse successful - chat format")
                 return it.trim()
             }
             choice.text?.let { 
-                Log.d(TAG, "✅ Parse successful - text format")
+                Log.d(TAG, "Parse successful - text format")
                 return it.trim()
             }
         }
         
         data.results?.firstOrNull()?.generatedText?.let { 
-            Log.d(TAG, "✅ Parse successful - generation format")
+            Log.d(TAG, "Parse successful - generation format")
             return it.trim()
         }
         
         data.generatedText?.let { 
-            Log.d(TAG, "✅ Parse successful - direct generated text")
+            Log.d(TAG, "Parse successful - direct generated text")
             return it.trim()
         }
         data.result?.let { 
-            Log.d(TAG, "✅ Parse successful - result format")
+            Log.d(TAG, "Parse successful - result format")
             return it.trim()
         }
         data.response?.let { 
-            Log.d(TAG, "✅ Parse successful - response format")
+            Log.d(TAG, "Parse successful - response format")
             return it.trim()
         }
         data.content?.let { 
-            Log.d(TAG, "✅ Parse successful - content format")
+            Log.d(TAG, "Parse successful - content format")
             return it.trim()
         }
         data.text?.let { 
-            Log.d(TAG, "✅ Parse successful - text format")
+            Log.d(TAG, "Parse successful - text format")
             return it.trim()
         }
         
-        Log.e(TAG, "❌ Cannot parse response format")
+        Log.e(TAG, "Cannot parse response format")
         throw IOException("Cannot parse Watson AI response format")
     }
     
@@ -417,44 +417,44 @@ object WatsonAIEnhanced {
     }
     
     /**
-     * 🆕 Test all services
+     * Test all services
      */
     suspend fun testEnhancedService(): AIResult {
         return try {
-            Log.d(TAG, "🔧 Testing enhanced service connection...")
+            Log.d(TAG, "Testing enhanced service connection...")
             
             val testResults = mutableListOf<String>()
             
             // Test weather function
             try {
                 val weatherTest = WeatherFunctions.testWeatherService()
-                testResults.add("Weather Service: ✅ $weatherTest")
+                testResults.add("Weather Service: $weatherTest")
             } catch (e: Exception) {
-                testResults.add("Weather Service: ❌ ${e.message}")
+                testResults.add("Weather Service: ${e.message}")
             }
             
             // Test SMS function
             try {
                 val smsTest = SMSFunctions.testSMSService()
-                testResults.add("SMS Service: ✅ $smsTest")
+                testResults.add("SMS Service: $smsTest")
             } catch (e: Exception) {
-                testResults.add("SMS Service: ❌ ${e.message}")
+                testResults.add("SMS Service: ${e.message}")
             }
             
             // Test News function
             try {
                 val newsTest = NewsFunctions.testNewsService()
-                testResults.add("News Service: ✅ $newsTest")
+                testResults.add("News Service: $newsTest")
             } catch (e: Exception) {
-                testResults.add("News Service: ❌ ${e.message}")
+                testResults.add("News Service: ${e.message}")
             }
             
             // Test Podcast function
             try {
                 val podcastTest = PodcastFunctions.testPodcastService()
-                testResults.add("Podcast Service: ✅ $podcastTest")
+                testResults.add("Podcast Service: $podcastTest")
             } catch (e: Exception) {
-                testResults.add("Podcast Service: ❌ ${e.message}")
+                testResults.add("Podcast Service: ${e.message}")
             }
             
             // Test AI conversation
@@ -462,22 +462,22 @@ object WatsonAIEnhanced {
             val aiResult = getEnhancedAIResponse(testMessage)
             
             if (aiResult.success) {
-                testResults.add("AI Service: ✅ Connection normal")
+                testResults.add("AI Service: Connection normal")
             } else {
-                testResults.add("AI Service: ❌ ${aiResult.error}")
+                testResults.add("AI Service: ${aiResult.error}")
             }
             
             val overallResult = testResults.joinToString("\n")
             
-            Log.d(TAG, "✅ Enhanced service testing completed")
+            Log.d(TAG, "Enhanced service testing completed")
             AIResult(
                 success = true,
-                response = "🔧 Enhanced Service Test Results:\n\n$overallResult\n\n💬 Conversation History: ${ContextManager.getHistorySize()} entries",
+                response = "Enhanced Service Test Results:\n\n$overallResult\n\nConversation History: ${ContextManager.getHistorySize()} entries",
                 error = null
             )
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Enhanced service testing exception: ${e.message}")
+            Log.e(TAG, "Enhanced service testing exception: ${e.message}")
             AIResult(
                 success = false,
                 response = "",
@@ -487,7 +487,7 @@ object WatsonAIEnhanced {
     }
     
     /**
-     * 🆕 Get complete service status
+     * Get complete service status
      */
     fun getServiceStatus(): String {
         val baseStatus = when {
@@ -503,17 +503,17 @@ object WatsonAIEnhanced {
         val conversationStatus = getConversationSummary()
         
         return """
-            🤖 Watson AI Enhanced Status: $baseStatus
+            Watson AI Enhanced Status: $baseStatus
             
-            🌤️ $weatherStatus
+            $weatherStatus
             
-            📱 $smsStatus
+            $smsStatus
             
-            📰 $newsStatus
+            $newsStatus
             
-            🎧 $podcastStatus
+            $podcastStatus
             
-            💬 $conversationStatus
+            $conversationStatus
         """.trimIndent()
     }
     

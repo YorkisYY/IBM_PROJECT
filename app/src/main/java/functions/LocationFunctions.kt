@@ -20,15 +20,15 @@ object LocationFunctions {
      */
     fun initialize(context: Context) {
         weatherService = WeatherService(context)
-        Log.d(TAG, "✅ Location function manager initialized (using WeatherFunctions location method)")
+        Log.d(TAG, "Location function manager initialized (using WeatherFunctions location method)")
     }
     
     /**
      * Execute location function
      */
     suspend fun execute(functionName: String, arguments: String): String {
-        Log.d(TAG, "🔧 Executing location function: $functionName")
-        Log.d(TAG, "📝 Parameters: $arguments")
+        Log.d(TAG, "Executing location function: $functionName")
+        Log.d(TAG, "Parameters: $arguments")
         
         return try {
             when (functionName) {
@@ -36,12 +36,12 @@ object LocationFunctions {
                 "get_user_location" -> executeUserLocation()
                 "get_location_info" -> executeLocationInfo()
                 else -> {
-                    Log.w(TAG, "⚠️ Unknown location function: $functionName")
+                    Log.w(TAG, "Unknown location function: $functionName")
                     "Error: Unknown location function $functionName"
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Location function execution failed: ${e.message}")
+            Log.e(TAG, "Location function execution failed: ${e.message}")
             "Error: Location data retrieval failed - ${e.message}"
         }
     }
@@ -50,9 +50,9 @@ object LocationFunctions {
      * Execute current location query - using exact same method as weather
      */
     private suspend fun executeCurrentLocation(): String {
-        Log.d(TAG, "📍 Executing current location query (using weather location method)")
+        Log.d(TAG, "Executing current location query (using weather location method)")
         
-        // 🎯 使用與天氣完全相同的location檢測方式
+        // Use exactly the same location detection method as weather
         val weatherData = weatherService.getCurrentLocationWeather()
         
         val result = """
@@ -63,7 +63,7 @@ object LocationFunctions {
             Area type: ${getAreaType(weatherData.city)}
         """.trimIndent()
         
-        Log.d(TAG, "✅ Current location query completed using weather method")
+        Log.d(TAG, "Current location query completed using weather method")
         return result
     }
     
@@ -71,7 +71,7 @@ object LocationFunctions {
      * Execute user location query (same as current location)
      */
     private suspend fun executeUserLocation(): String {
-        Log.d(TAG, "🏠 Executing user location query")
+        Log.d(TAG, "Executing user location query")
         return executeCurrentLocation()
     }
     
@@ -79,9 +79,9 @@ object LocationFunctions {
      * Execute detailed location info query
      */
     private suspend fun executeLocationInfo(): String {
-        Log.d(TAG, "🏘️ Executing detailed location info query")
+        Log.d(TAG, "Executing detailed location info query")
         
-        // 使用與天氣相同的location檢測方式
+        // Use the same location detection method as weather
         val weatherData = weatherService.getCurrentLocationWeather()
         
         val result = """
@@ -95,7 +95,7 @@ object LocationFunctions {
             Current temperature: ${weatherData.temperature}°C (bonus weather info)
         """.trimIndent()
         
-        Log.d(TAG, "✅ Detailed location info query completed")
+        Log.d(TAG, "Detailed location info query completed")
         return result
     }
     
@@ -135,9 +135,9 @@ object LocationFunctions {
      */
     suspend fun testLocationService(): String {
         return try {
-            Log.d(TAG, "🔧 Testing location service connection (using weather location method)")
+            Log.d(TAG, "Testing location service connection (using weather location method)")
             
-            // 測試與天氣相同的location檢測
+            // Test the same location detection as weather
             val weatherData = weatherService.getCurrentLocationWeather()
             
             """
@@ -149,7 +149,7 @@ object LocationFunctions {
             """.trimIndent()
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Location service test failed: ${e.message}")
+            Log.e(TAG, "Location service test failed: ${e.message}")
             "Location service test failed: ${e.message}"
         }
     }

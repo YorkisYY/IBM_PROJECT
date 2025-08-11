@@ -2,25 +2,24 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- 相機權限 (AR 必需) -->
+
     <uses-permission android:name="android.permission.CAMERA" />
     
-    <!-- 網路權限 (Watson AI 需要) -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     
-    <!-- 位置權限 (天氣功能需要) -->
+
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     
-    <!-- 🆕 簡訊權限 (SMS 功能需要) -->
+
     <uses-permission android:name="android.permission.READ_SMS" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     
-    <!-- 🆕 TTS 權限 (未來語音朗讀功能需要) -->
+
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-    <!-- 硬體功能需求 -->
+
     <uses-feature
         android:name="android.hardware.camera.ar"
         android:required="false" />
@@ -45,7 +44,7 @@
             android:value="optional"
             tools:replace="android:value" />
 
-        <!-- 🆕 可選：簡訊接收器 (未來監聽新簡訊用) -->
+
         <receiver 
             android:name=".SMSReceiver"
             android:enabled="true"

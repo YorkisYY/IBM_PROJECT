@@ -39,7 +39,6 @@ class ARTouchHandler {
         private const val SMOOTH_FACTOR = 0.15f
         private const val MIN_VELOCITY_THRESHOLD = 0.01f
         
-    
         private const val SAFE_PLACEMENT_DISTANCE = 0.3f 
         private const val TOUCH_DETECTION_RADIUS = 0.3f
         private const val MAX_MODELS_ALLOWED = 3 
@@ -87,27 +86,27 @@ class ARTouchHandler {
     private var firstCatBoundingHeight: Float = 0.4f
     
     /**
-     * 使用簡化的距離檢測方法來選擇模型
+     * Use simplified distance detection method to select model
      */
     private fun findModelWithDistanceCheck(
         touchX: Float,
         touchY: Float,
         frame: Frame?
     ): ModelNode? {
-        // 這個方法保留但不使用，因為我們恢復了原本的邏輯
+        // This method is kept but not used as we restored the original logic
         return null
     }
     
     /**
-     * 檢查新位置是否安全（不會與現有模型太近）
-     * 添加詳細的調試信息
+     * Check if new position is safe (won't get too close to existing models)
+     * Add detailed debug information
      */
     private fun checkPlacementSafety(
         touchX: Float,
         touchY: Float,
         frame: Frame?
     ): Pair<Boolean, Position?> {
-        // 這個方法保留但不使用，因為我們恢復了原本的邏輯
+        // This method is kept but not used as we restored the original logic
         return Pair(true, null)
     }
     
@@ -181,7 +180,7 @@ class ARTouchHandler {
     }
     
     /**
-     * 主要的觸摸處理方法 - 恢復原本的簡單邏輯
+     * Main touch handling method - restore original simple logic
      */
     fun handleSceneViewTouchDown(
         motionEvent: MotionEvent,
@@ -192,8 +191,8 @@ class ARTouchHandler {
         childNodes: MutableList<Node>,
         engine: com.google.android.filament.Engine,
         arRenderer: ar.ARSceneViewRenderer,
-        collisionSystem: CollisionSystem, // 保留參數但不使用，避免修改主程式
-        cameraNode: io.github.sceneview.node.CameraNode, // 保留參數但不使用
+        collisionSystem: CollisionSystem, // Keep parameter but not used to avoid modifying main program
+        cameraNode: io.github.sceneview.node.CameraNode, // Keep parameter but not used
         onFirstCatCreated: (ModelNode?) -> Unit
     ) {
         lastTouchX = motionEvent.x
@@ -204,19 +203,19 @@ class ARTouchHandler {
         
         Log.d(TAG, "Touch at: (${motionEvent.x}, ${motionEvent.y})")
         
-        // 🔥 恢復你原本的邏輯：先轉換世界座標
+        // Restore your original logic: convert world coordinates first
         val worldTouchPosition = screenToWorldPosition(motionEvent, frame)
         
-        // 🔥 原本邏輯：只有當有現有模型且轉換成功時才檢查選擇
+        // Original logic: only check selection when there are existing models and conversion succeeds
         if (worldTouchPosition != null && placedModelNodes.isNotEmpty()) {
             try {
-                // 檢查是否點擊現有模型進行旋轉
+                // Check if clicking existing model for rotation
                 val touchedModel = findModelInTouchRange(worldTouchPosition)
                 
                 if (touchedModel != null) {
                     Log.d(TAG, "Model selected for rotation: ${touchedModel.name}")
                     
-                    // 進入旋轉模式
+                    // Enter rotation mode
                     selectedNode = touchedModel
                     isRotating = false
                     setupRotationForModel(touchedModel)
@@ -229,15 +228,15 @@ class ARTouchHandler {
             }
         }
         
-        // 🔥 原本邏輯：檢查重疊（只有當有現有模型時）
+        // Original logic: check overlap (only when there are existing models)
         if (worldTouchPosition != null && placedModelNodes.isNotEmpty()) {
             Log.d(TAG, "Checking placement overlap...")
             if (checkPlacementOverlap(worldTouchPosition)) {
-                Log.d(TAG, "❌ PLACEMENT BLOCKED - Would overlap with existing model")
+                Log.d(TAG, "PLACEMENT BLOCKED - Would overlap with existing model")
                 arRenderer.planeDetectionStatus.value = "Cannot place here - too close to existing cat"
                 return
             } else {
-                Log.d(TAG, "✅ PLACEMENT SAFE - No overlap detected")
+                Log.d(TAG, "PLACEMENT SAFE - No overlap detected")
             }
         } else {
             if (worldTouchPosition == null) {
@@ -247,7 +246,7 @@ class ARTouchHandler {
             }
         }
         
-        // 🔥 原本邏輯：直接放置新模型（第一個模型會直接通過）
+        // Original logic: directly place new model (first model will pass through directly)
         Log.d(TAG, "Placing new cat")
         runBlocking {
             val newCat = placeCatAtTouch(motionEvent, frame, session, modelLoader, childNodes, engine, arRenderer)
@@ -256,7 +255,7 @@ class ARTouchHandler {
     }
     
     /**
-     * 恢復原本的世界座標轉換方法 - 增強調試
+     * Restore original world coordinate conversion method - enhanced debugging
      */
     private fun screenToWorldPosition(motionEvent: MotionEvent, frame: Frame?): Position? {
         Log.d(TAG, "=== screenToWorldPosition DEBUG ===")
@@ -281,29 +280,29 @@ class ARTouchHandler {
                 val translation = pose.translation
                 val position = Position(translation[0], translation[1], translation[2])
                 
-                Log.d(TAG, "✅ Position found: (${position.x}, ${position.y}, ${position.z})")
+                Log.d(TAG, "Position found: (${position.x}, ${position.y}, ${position.z})")
                 position
             } else {
-                Log.w(TAG, "❌ No hit results returned from ARCore")
+                Log.w(TAG, "No hit results returned from ARCore")
                 
-                // 檢查 ARCore 狀態
+                // Check ARCore status
                 val camera = frame.camera
                 Log.d(TAG, "Camera tracking state: ${camera.trackingState}")
                 
-                // 檢查平面檢測
+                // Check plane detection
                 val planes = frame.getUpdatedTrackables(Plane::class.java)
                 Log.d(TAG, "Detected planes count: ${planes.size}")
                 
                 null
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Hit test exception: ${e.message}", e)
+            Log.e(TAG, "Hit test exception: ${e.message}", e)
             null
         }
     }
     
     /**
-     * 恢復原本的模型範圍檢測方法
+     * Restore original model range detection method
      */
     private fun findModelInTouchRange(worldPosition: Position): ModelNode? {
         var closestModel: ModelNode? = null
@@ -328,7 +327,7 @@ class ARTouchHandler {
     }
     
     /**
-     * 恢復原本的重疊檢測方法
+     * Restore original overlap detection method
      */
     private fun checkPlacementOverlap(newWorldPosition: Position): Boolean {
         return placedModelNodes.any { existingNode ->
@@ -446,7 +445,7 @@ class ARTouchHandler {
         safePlacementDistance: Float = SAFE_PLACEMENT_DISTANCE,
         touchDetectionRadius: Float = TOUCH_DETECTION_RADIUS
     ) {
-        // 更新常量值（在實際實現中，你可能需要使用可變的變量）
+        // Update constant values (in actual implementation, you might need to use mutable variables)
         Log.d(TAG, "Collision detection configured: placement=$safePlacementDistance, touch=$touchDetectionRadius")
     }
     
@@ -533,7 +532,7 @@ class ARTouchHandler {
             var placedModel: ModelNode? = null
             var placementPosition: Position? = null
             
-            // 🔥 修正：統一的碰撞檢測邏輯
+            // Fix: unified collision detection logic
             fun isPositionSafe(position: Position): Boolean {
                 if (placedModelNodes.isEmpty()) return true
                 
@@ -546,15 +545,15 @@ class ARTouchHandler {
                 }
                 
                 if (wouldOverlap) {
-                    Log.d(TAG, "❌ Position unsafe - too close to existing models")
+                    Log.d(TAG, "Position unsafe - too close to existing models")
                     return false
                 }
                 
-                Log.d(TAG, "✅ Position safe - can place model")
+                Log.d(TAG, "Position safe - can place model")
                 return true
             }
             
-            // 第一種方法：標準 hit test
+            // First method: standard hit test
             val hitResults = frame.hitTest(touchX, touchY)
             Log.d(TAG, "Standard hit results: ${hitResults.size}")
             
@@ -568,7 +567,7 @@ class ARTouchHandler {
                     if (isPositionSafe(placementPosition)) {
                         val anchor = hitResult.createAnchor()
                         placedModel = createCatModel(anchor, modelLoader, childNodes, engine, arRenderer)
-                        Log.d(TAG, "✅ Using standard hit test")
+                        Log.d(TAG, "Using standard hit test")
                         if (placedModel != null) break
                     }
                 } catch (e: Exception) {
@@ -577,7 +576,7 @@ class ARTouchHandler {
                 }
             }
             
-            // 第二種方法：Instant Placement
+            // Second method: Instant Placement
             if (placedModel == null) {
                 Log.d(TAG, "Trying instant placement...")
                 try {
@@ -594,9 +593,9 @@ class ARTouchHandler {
                         if (isPositionSafe(placementPosition)) {
                             val anchor = instantResult.createAnchor()
                             placedModel = createCatModel(anchor, modelLoader, childNodes, engine, arRenderer)
-                            Log.d(TAG, "✅ Using instant placement")
+                            Log.d(TAG, "Using instant placement")
                         } else {
-                            Log.d(TAG, "❌ Instant placement blocked by distance check")
+                            Log.d(TAG, "Instant placement blocked by distance check")
                         }
                     }
                 } catch (e: Exception) {
@@ -604,7 +603,7 @@ class ARTouchHandler {
                 }
             }
             
-            // 第三種方法：相機前方放置
+            // Third method: camera forward placement
             if (placedModel == null) {
                 Log.d(TAG, "Trying camera forward placement...")
                 try {
@@ -625,9 +624,9 @@ class ARTouchHandler {
                     if (isPositionSafe(placementPosition)) {
                         val anchor = session.createAnchor(forwardPose)
                         placedModel = createCatModel(anchor, modelLoader, childNodes, engine, arRenderer)
-                        Log.d(TAG, "✅ Using camera forward placement")
+                        Log.d(TAG, "Using camera forward placement")
                     } else {
-                        Log.d(TAG, "❌ Camera forward placement blocked by distance check")
+                        Log.d(TAG, "Camera forward placement blocked by distance check")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Camera forward placement failed: ${e.message}")
@@ -635,9 +634,9 @@ class ARTouchHandler {
             }
             
             if (placedModel != null) {
-                Log.d(TAG, "🎉 Model placed successfully at: $placementPosition")
+                Log.d(TAG, "Model placed successfully at: $placementPosition")
             } else {
-                Log.d(TAG, "❌ All placement methods failed or blocked by distance checks")
+                Log.d(TAG, "All placement methods failed or blocked by distance checks")
             }
             
             return placedModel
@@ -649,7 +648,7 @@ class ARTouchHandler {
     }
     
     /**
-     * 檢查位置是否會與現有模型重疊
+     * Check if position would overlap with existing models
      */
     private fun checkPositionOverlap(newPosition: Position): Boolean {
         return placedModelNodes.any { existingModel ->

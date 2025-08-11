@@ -1,4 +1,4 @@
-// TypewriterEffect.kt - 放在 utils 包下
+// TypewriterEffect.kt - Place under utils package
 package utils
 
 import androidx.compose.runtime.*
@@ -9,7 +9,7 @@ import androidx.compose.material3.LocalTextStyle
 import kotlinx.coroutines.*
 
 /**
- * 打字機效果數據類
+ * Typewriter effect data class
  */
 data class TypewriterState(
     val displayedText: String = "",
@@ -19,8 +19,8 @@ data class TypewriterState(
 )
 
 /**
- * 打字機效果管理器 - 基於 React useTypewriter Hook
- * 與您的 React 代碼邏輯完全一致：按單詞分割，每200ms顯示一個單詞
+ * Typewriter effect manager - Based on React useTypewriter Hook
+ * Completely consistent with your React code logic: split by words, display one word every 200ms
  */
 class TypewriterManager {
     private var _state = mutableStateOf(TypewriterState())
@@ -29,17 +29,17 @@ class TypewriterManager {
     private var currentJob: Job? = null
     
     /**
-     * 開始打字機效果
-     * @param fullText 完整文本
-     * @param speed 每個單詞的延遲時間（毫秒），默認200ms（與React一致）
-     * @param coroutineScope 協程作用域
+     * Start typewriter effect
+     * @param fullText Complete text
+     * @param speed Delay time per word (milliseconds), default 200ms (consistent with React)
+     * @param coroutineScope Coroutine scope
      */
     fun startTyping(
         fullText: String, 
         speed: Long = 200L,
         coroutineScope: CoroutineScope
     ) {
-        // 停止當前的打字效果
+        // Stop current typing effect
         stopTyping()
         
         if (fullText.trim().isEmpty()) {
@@ -47,7 +47,7 @@ class TypewriterManager {
             return
         }
         
-        // 初始化狀態
+        // Initialize state
         _state.value = TypewriterState(
             displayedText = "",
             isTyping = true,
@@ -55,7 +55,7 @@ class TypewriterManager {
             fullText = fullText.trim()
         )
         
-        // 按單詞分割（與您的 React 代碼一致）
+        // Split by words (consistent with your React code)
         val words = fullText.trim().split(' ')
         var currentWordIndex = 0
         
@@ -64,10 +64,10 @@ class TypewriterManager {
                 while (currentWordIndex < words.size && _state.value.isTyping) {
                     delay(speed)
                     
-                    // 檢查是否被取消
+                    // Check if cancelled
                     if (!isActive) break
                     
-                    // 取前 N 個單詞（與您的 React 代碼邏輯一致）
+                    // Take first N words (consistent with your React code logic)
                     val wordsToShow = words.take(currentWordIndex + 1)
                     val displayedText = wordsToShow.joinToString(" ")
                     val progress = (currentWordIndex + 1).toFloat() / words.size
@@ -80,7 +80,7 @@ class TypewriterManager {
                     currentWordIndex++
                 }
                 
-                // 打字完成
+                // Typing completed
                 if (isActive) {
                     _state.value = _state.value.copy(
                         isTyping = false,
@@ -89,13 +89,13 @@ class TypewriterManager {
                 }
                 
             } catch (e: CancellationException) {
-                // 協程被取消，不需要處理
+                // Coroutine cancelled, no handling needed
             }
         }
     }
     
     /**
-     * 停止打字效果
+     * Stop typing effect
      */
     fun stopTyping() {
         currentJob?.cancel()
@@ -104,7 +104,7 @@ class TypewriterManager {
     }
     
     /**
-     * 重置狀態
+     * Reset state
      */
     fun reset() {
         stopTyping()
@@ -112,7 +112,7 @@ class TypewriterManager {
     }
     
     /**
-     * 立即顯示完整文本（跳過打字效果）
+     * Immediately show complete text (skip typing effect)
      */
     fun showCompleteText() {
         stopTyping()
@@ -125,15 +125,15 @@ class TypewriterManager {
 }
 
 /**
- * Composable 函數：創建和管理打字機效果
- * 使用方式：
+ * Composable function: Create and manage typewriter effect
+ * Usage:
  * ```
  * val typewriter = rememberTypewriterEffect()
  * 
- * // 開始打字效果
+ * // Start typing effect
  * typewriter.startTyping("Hello World!", coroutineScope)
  * 
- * // 顯示文字
+ * // Display text
  * Text(text = typewriter.state.value.displayedText)
  * ```
  */
@@ -143,11 +143,11 @@ fun rememberTypewriterEffect(): TypewriterManager {
 }
 
 /**
- * 便捷的 Composable Hook - 類似您的 React useTypewriter
- * @param fullText 要顯示的完整文本
- * @param speed 打字速度（毫秒）
- * @param autoStart 是否自動開始
- * @return TypewriterState 打字機狀態
+ * Convenient Composable Hook - Similar to your React useTypewriter
+ * @param fullText Complete text to display
+ * @param speed Typing speed (milliseconds)
+ * @param autoStart Whether to auto start
+ * @return TypewriterState Typewriter state
  */
 @Composable
 fun useTypewriterEffect(
@@ -158,14 +158,14 @@ fun useTypewriterEffect(
     val typewriter = rememberTypewriterEffect()
     val coroutineScope = rememberCoroutineScope()
     
-    // 當文本變化時自動開始打字
+    // Auto start typing when text changes
     LaunchedEffect(fullText, autoStart) {
         if (autoStart && fullText.isNotEmpty()) {
             typewriter.startTyping(fullText, speed, coroutineScope)
         }
     }
     
-    // 組件卸載時清理
+    // Cleanup when component unmounts
     DisposableEffect(Unit) {
         onDispose {
             typewriter.reset()
@@ -176,7 +176,7 @@ fun useTypewriterEffect(
 }
 
 /**
- * 簡化版打字機文本組件
+ * Simplified typewriter text component
  */
 @Composable
 fun TypewriterText(

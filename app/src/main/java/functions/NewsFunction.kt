@@ -1,4 +1,4 @@
-// functions/NewsFunction.kt - Complete English Version with NewsAPI.org
+// functions/NewsFunctions.kt - Complete English Version with NewsAPI.org
 package functions
 
 import android.content.Context
@@ -35,7 +35,7 @@ object NewsFunctions {
     )
     
     fun initialize(context: Context) {
-        Log.d(TAG, "✅ News Functions initialized (NewsAPI.org)")
+        Log.d(TAG, "News Functions initialized (NewsAPI.org)")
     }
     
     /**
@@ -43,7 +43,7 @@ object NewsFunctions {
      */
     suspend fun execute(functionName: String, arguments: String): String {
         return try {
-            Log.d(TAG, "🎯 Executing news function: $functionName")
+            Log.d(TAG, "Executing news function: $functionName")
             
             when (functionName) {
                 "get_latest_news" -> getLatestNews(arguments)
@@ -59,12 +59,12 @@ object NewsFunctions {
                 "get_recommended_news" -> getRecommendedNewsCategories()
                 "get_news_categories" -> getNewsCategories()
                 else -> {
-                    Log.w(TAG, "⚠️ Unknown news function: $functionName")
+                    Log.w(TAG, "Unknown news function: $functionName")
                     "Sorry, I don't recognize that news function."
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ News function execution failed: ${e.message}")
+            Log.e(TAG, "News function execution failed: ${e.message}")
             "Sorry, I couldn't retrieve the news information right now. Please try again later."
         }
     }
@@ -74,27 +74,27 @@ object NewsFunctions {
      */
     private suspend fun getRecommendedNewsCategories(): String {
         return """
-📰 I can provide you with the following types of news:
+I can provide you with the following types of news:
 
-💼 **Business** (business)
+**Business** (business)
    Stock market, economy, corporate news, financial updates
 
-🎬 **Entertainment** (entertainment) 
+**Entertainment** (entertainment) 
    Celebrity news, movies, music, pop culture
 
-📰 **General** (general)
+**General** (general)
    Breaking news, world events, important headlines
 
-🏥 **Health** (health)
+**Health** (health)
    Medical news, health tips, wellness information
 
-🔬 **Science** (science)
+**Science** (science)
    Scientific discoveries, research, technology breakthroughs
 
-⚽ **Sports** (sports)
+**Sports** (sports)
    Sports events, athlete news, game results
 
-💻 **Technology** (technology)
+**Technology** (technology)
    Tech products, IT news, digital trends, gadgets
 
 Which type of news would you like to see? Just tell me the category name and I'll get the latest news for you!
@@ -106,17 +106,17 @@ Which type of news would you like to see? Just tell me the category name and I'l
      */
     private suspend fun getNewsCategories(): String {
         val sb = StringBuilder()
-        sb.appendLine("📰 Available News Categories:")
+        sb.appendLine("Available News Categories:")
         sb.appendLine("=".repeat(40))
         
         val categoryDescriptions = mapOf(
-            "business" to "💼 Business & Finance",
-            "entertainment" to "🎬 Entertainment & Celebrity",
-            "general" to "📰 General & World News",
-            "health" to "🏥 Health & Medical",
-            "science" to "🔬 Science & Research",
-            "sports" to "⚽ Sports & Games",
-            "technology" to "💻 Technology & IT"
+            "business" to "Business & Finance",
+            "entertainment" to "Entertainment & Celebrity",
+            "general" to "General & World News",
+            "health" to "Health & Medical",
+            "science" to "Science & Research",
+            "sports" to "Sports & Games",
+            "technology" to "Technology & IT"
         )
         
         categoryDescriptions.forEach { (category, description) ->
@@ -125,7 +125,7 @@ Which type of news would you like to see? Just tell me the category name and I'l
             sb.appendLine()
         }
         
-        sb.appendLine("💡 Usage examples:")
+        sb.appendLine("Usage examples:")
         sb.appendLine("• Say 'I want health news'")
         sb.appendLine("• Say 'Show me technology news'")
         sb.appendLine("• Say 'What's the latest business news'")
@@ -318,7 +318,7 @@ Which type of news would you like to see? Just tell me the category name and I'l
                 apiUrl += "&category=${newsCategories[category]}"
             }
             
-            Log.d(TAG, "📡 Calling NewsAPI: $apiUrl")
+            Log.d(TAG, "Calling NewsAPI: $apiUrl")
             
             val response = URL(apiUrl).readText()
             val newsResponse = json.decodeFromString<NewsAPIResponse>(response)
@@ -351,7 +351,7 @@ Which type of news would you like to see? Just tell me the category name and I'l
                     "sortBy=publishedAt&" +
                     "pageSize=$pageSize"
             
-            Log.d(TAG, "📡 Searching NewsAPI: $apiUrl")
+            Log.d(TAG, "Searching NewsAPI: $apiUrl")
             
             val response = URL(apiUrl).readText()
             val newsResponse = json.decodeFromString<NewsAPIResponse>(response)
@@ -376,24 +376,24 @@ Which type of news would you like to see? Just tell me the category name and I'l
      */
     private fun formatNewsResponse(articles: List<NewsAPIArticle>, title: String): String {
         val sb = StringBuilder()
-        sb.appendLine("📰 $title")
+        sb.appendLine("$title")
         sb.appendLine("=".repeat(50))
         
         articles.take(10).forEachIndexed { index, article ->
             sb.appendLine("\n${index + 1}. ${article.title}")
             if (!article.description.isNullOrEmpty()) {
-                sb.appendLine("   📝 ${article.description.take(120)}${if (article.description.length > 120) "..." else ""}")
+                sb.appendLine("   ${article.description.take(120)}${if (article.description.length > 120) "..." else ""}")
             }
-            sb.appendLine("   📅 Source: ${article.source.name}")
+            sb.appendLine("   Source: ${article.source.name}")
             if (article.publishedAt.isNotEmpty()) {
-                sb.appendLine("   ⏰ Published: ${formatDate(article.publishedAt)}")
+                sb.appendLine("   Published: ${formatDate(article.publishedAt)}")
             }
             if (article.url.isNotEmpty()) {
-                sb.appendLine("   🔗 ${article.url}")
+                sb.appendLine("   ${article.url}")
             }
         }
         
-        sb.appendLine("\n📊 Total ${articles.size} news articles found")
+        sb.appendLine("\nTotal ${articles.size} news articles found")
         return sb.toString()
     }
     
@@ -402,17 +402,17 @@ Which type of news would you like to see? Just tell me the category name and I'l
      */
     private fun formatNewsSummary(results: Map<String, List<NewsAPIArticle>>): String {
         val sb = StringBuilder()
-        sb.appendLine("📰 News Summary")
+        sb.appendLine("News Summary")
         sb.appendLine("=".repeat(40))
         
         results.forEach { (category, articles) ->
-            sb.appendLine("\n🏷️ ${category.uppercase()} NEWS:")
+            sb.appendLine("\n${category.uppercase()} NEWS:")
             articles.take(3).forEachIndexed { index, article ->
                 sb.appendLine("  ${index + 1}. ${article.title}")
                 if (!article.description.isNullOrEmpty()) {
-                    sb.appendLine("     📝 ${article.description.take(80)}...")
+                    sb.appendLine("     ${article.description.take(80)}...")
                 }
-                sb.appendLine("     📅 ${article.source.name}")
+                sb.appendLine("     ${article.source.name}")
             }
         }
         

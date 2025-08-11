@@ -49,7 +49,7 @@ class SMSReader(private val context: Context) {
      */
     fun getUnreadMessages(): List<SMSMessage> {
         if (!hasPermissions()) {
-            Log.w(TAG, "⚠️ No SMS read permission")
+            Log.w(TAG, "No SMS read permission")
             return emptyList()
         }
         
@@ -57,7 +57,7 @@ class SMSReader(private val context: Context) {
         
         try {
             val cursor = context.contentResolver.query(
-                Telephony.Sms.Inbox.CONTENT_URI, // ✅ 修正：使用 CONTENT_URI
+                Telephony.Sms.Inbox.CONTENT_URI,
                 arrayOf(
                     Telephony.Sms._ID,
                     Telephony.Sms.ADDRESS,
@@ -73,7 +73,7 @@ class SMSReader(private val context: Context) {
             cursor?.use {
                 while (it.moveToNext()) {
                     val id = it.getString(it.getColumnIndexOrThrow(Telephony.Sms._ID))
-                    val sender = it.getString(it.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)) ?: "未知號碼"
+                    val sender = it.getString(it.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)) ?: "Unknown Number"
                     val body = it.getString(it.getColumnIndexOrThrow(Telephony.Sms.BODY)) ?: ""
                     val date = it.getLong(it.getColumnIndexOrThrow(Telephony.Sms.DATE))
                     val isRead = it.getInt(it.getColumnIndexOrThrow(Telephony.Sms.READ)) == 1
@@ -82,21 +82,21 @@ class SMSReader(private val context: Context) {
                 }
             }
             
-            Log.d(TAG, "✅ Successfully read ${messages.size} unread messages")
+            Log.d(TAG, "Successfully read ${messages.size} unread messages")
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Failed to read unread messages: ${e.message}")
+            Log.e(TAG, "Failed to read unread messages: ${e.message}")
         }
         
         return messages
     }
 
     /**
-     * 獲取最近簡訊
+     * Get recent messages
      */
     fun getRecentMessages(limit: Int = 10): List<SMSMessage> {
         if (!hasPermissions()) {
-            Log.w(TAG, "⚠️ No SMS read permission")
+            Log.w(TAG, "No SMS read permission")
             return emptyList()
         }
         
@@ -104,7 +104,7 @@ class SMSReader(private val context: Context) {
         
         try {
             val cursor = context.contentResolver.query(
-                Telephony.Sms.Inbox.CONTENT_URI, // ✅ 修正：使用 CONTENT_URI
+                Telephony.Sms.Inbox.CONTENT_URI,
                 arrayOf(
                     Telephony.Sms._ID,
                     Telephony.Sms.ADDRESS,
@@ -120,7 +120,7 @@ class SMSReader(private val context: Context) {
             cursor?.use {
                 while (it.moveToNext()) {
                     val id = it.getString(it.getColumnIndexOrThrow(Telephony.Sms._ID))
-                    val sender = it.getString(it.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)) ?: "未知號碼"
+                    val sender = it.getString(it.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)) ?: "Unknown Number"
                     val body = it.getString(it.getColumnIndexOrThrow(Telephony.Sms.BODY)) ?: ""
                     val date = it.getLong(it.getColumnIndexOrThrow(Telephony.Sms.DATE))
                     val isRead = it.getInt(it.getColumnIndexOrThrow(Telephony.Sms.READ)) == 1
@@ -129,15 +129,15 @@ class SMSReader(private val context: Context) {
                 }
             }
             
-            Log.d(TAG, "✅ Successfully read ${messages.size} recent messages")
+            Log.d(TAG, "Successfully read ${messages.size} recent messages")
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Failed to read recent messages: ${e.message}")
+            Log.e(TAG, "Failed to read recent messages: ${e.message}")
         }
         
         return messages
     }
-} // ← ✅ 這裡缺少 SMSReader 類別的結尾括號
+}
 
 /**
  * SMS Function Manager - handles all SMS-related Function Calling
@@ -152,15 +152,15 @@ object SMSFunctions {
      */
     fun initialize(context: Context) {
         smsReader = SMSReader(context)
-        Log.d(TAG, "✅ SMS function manager initialized")
+        Log.d(TAG, "SMS function manager initialized")
     }
     
     /**
      * Execute SMS function
      */
     suspend fun execute(functionName: String, arguments: String): String {
-        Log.d(TAG, "🔧 Executing SMS function: $functionName")
-        Log.d(TAG, "📝 Parameters: $arguments")
+        Log.d(TAG, "Executing SMS function: $functionName")
+        Log.d(TAG, "Parameters: $arguments")
         
         return try {
             when (functionName) {
@@ -170,12 +170,12 @@ object SMSFunctions {
                 "get_message_by_index" -> executeGetMessageByIndex(arguments)
                 "get_latest_message" -> executeGetLatestMessage()
                 else -> {
-                    Log.w(TAG, "⚠️ Unknown SMS function: $functionName")
+                    Log.w(TAG, "Unknown SMS function: $functionName")
                     "Error: Unknown SMS function $functionName"
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ SMS function execution failed: ${e.message}")
+            Log.e(TAG, "SMS function execution failed: ${e.message}")
             "Error: SMS function execution failed - ${e.message}"
         }
     }
@@ -184,7 +184,7 @@ object SMSFunctions {
      * Execute read unread messages
      */
     private suspend fun executeReadUnreadMessages(): String {
-        Log.d(TAG, "📱 Executing read unread messages")
+        Log.d(TAG, "Executing read unread messages")
         
         if (!smsReader.hasPermissions()) {
             return "Sorry, I need SMS read permission to help you view messages. Please enable permission in settings."
@@ -193,15 +193,15 @@ object SMSFunctions {
         val unreadMessages = smsReader.getUnreadMessages()
         
         if (unreadMessages.isEmpty()) {
-            Log.d(TAG, "📭 No unread messages")
-            return "You currently have no unread messages, all messages have been read. 😊"
+            Log.d(TAG, "No unread messages")
+            return "You currently have no unread messages, all messages have been read."
         }
         
         val result = StringBuilder()
-        result.append("📱 You have ${unreadMessages.size} unread messages:\n\n")
+        result.append("You have ${unreadMessages.size} unread messages:\n\n")
         
         unreadMessages.take(5).forEachIndexed { index, message ->
-            val timeFormatted = SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault())
+            val timeFormatted = SimpleDateFormat("MM/dd HH:mm", Locale.getDefault())
                 .format(Date(message.timestamp))
             
             result.append("${index + 1}. ")
@@ -214,16 +214,16 @@ object SMSFunctions {
             } else {
                 message.content
             }
-            result.append("   📝 $displayContent\n\n")
+            result.append("   $displayContent\n\n")
         }
         
         if (unreadMessages.size > 5) {
             result.append("...and ${unreadMessages.size - 5} more unread messages\n\n")
         }
         
-        result.append("💡 Would you like me to read a specific message for you?")
+        result.append("Would you like me to read a specific message for you?")
         
-        Log.d(TAG, "✅ Unread messages reading completed, total ${unreadMessages.size} messages")
+        Log.d(TAG, "Unread messages reading completed, total ${unreadMessages.size} messages")
         return result.toString()
     }
     
@@ -231,7 +231,7 @@ object SMSFunctions {
      * Execute read recent messages
      */
     private suspend fun executeReadRecentMessages(arguments: String): String {
-        Log.d(TAG, "📱 Executing read recent messages")
+        Log.d(TAG, "Executing read recent messages")
         
         if (!smsReader.hasPermissions()) {
             return "Sorry, I need SMS read permission to help you view messages."
@@ -262,13 +262,13 @@ object SMSFunctions {
         }
         
         val result = StringBuilder()
-        result.append("📱 Recent ${recentMessages.size} messages:\n\n")
+        result.append("Recent ${recentMessages.size} messages:\n\n")
         
         recentMessages.forEachIndexed { index, message ->
-            val timeFormatted = SimpleDateFormat("MM月dd日 HH:mm", Locale.getDefault())
+            val timeFormatted = SimpleDateFormat("MM/dd HH:mm", Locale.getDefault())
                 .format(Date(message.timestamp))
             
-            val readStatus = if (message.isRead) "" else " 📩"
+            val readStatus = if (message.isRead) "" else " (Unread)"
             
             result.append("${index + 1}. ")
             result.append("${formatPhoneNumber(message.sender)}$readStatus ")
@@ -280,10 +280,10 @@ object SMSFunctions {
             } else {
                 message.content
             }
-            result.append("   📝 $displayContent\n\n")
+            result.append("   $displayContent\n\n")
         }
         
-        Log.d(TAG, "✅ Recent messages reading completed, total ${recentMessages.size} messages")
+        Log.d(TAG, "Recent messages reading completed, total ${recentMessages.size} messages")
         return result.toString()
     }
     
@@ -291,7 +291,7 @@ object SMSFunctions {
      * Execute message summary
      */
     private suspend fun executeGetMessageSummary(): String {
-        Log.d(TAG, "📊 Executing message summary")
+        Log.d(TAG, "Executing message summary")
         
         if (!smsReader.hasPermissions()) {
             return "Sorry, I need SMS read permission to help you view message summary."
@@ -301,11 +301,11 @@ object SMSFunctions {
         val recentMessages = smsReader.getRecentMessages(10)
         
         val result = StringBuilder()
-        result.append("📱 SMS Summary Report:\n\n")
+        result.append("SMS Summary Report:\n\n")
         
         // Unread message statistics
         if (unreadMessages.isNotEmpty()) {
-            result.append("📩 Unread messages: ${unreadMessages.size} messages\n")
+            result.append("Unread messages: ${unreadMessages.size} messages\n")
             
             // Display the latest unread message sender
             val latestUnread = unreadMessages.first()
@@ -313,11 +313,11 @@ object SMSFunctions {
                 .format(Date(latestUnread.timestamp))
             result.append("   Latest: ${formatPhoneNumber(latestUnread.sender)} ($timeFormatted)\n\n")
         } else {
-            result.append("✅ No unread messages\n\n")
+            result.append("No unread messages\n\n")
         }
         
         // Recent activity statistics
-        result.append("📊 Last 24 hours:\n")
+        result.append("Last 24 hours:\n")
         val yesterday = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
         val recentCount = recentMessages.count { it.timestamp > yesterday }
         result.append("   Received $recentCount messages\n\n")
@@ -329,7 +329,7 @@ object SMSFunctions {
                 .sortedByDescending { it.value.size }
                 .take(3)
             
-            result.append("📈 Most active contacts:\n")
+            result.append("Most active contacts:\n")
             topSenders.forEach { (sender, messages) ->
                 result.append("   ${formatPhoneNumber(sender)}: ${messages.size} messages\n")
             }
@@ -338,12 +338,12 @@ object SMSFunctions {
         
         // Suggestions
         if (unreadMessages.isNotEmpty()) {
-            result.append("💡 Suggestion: You have ${unreadMessages.size} unread messages, would you like me to read them for you?")
+            result.append("Suggestion: You have ${unreadMessages.size} unread messages, would you like me to read them for you?")
         } else {
-            result.append("😊 All messages have been processed!")
+            result.append("All messages have been processed!")
         }
         
-        Log.d(TAG, "✅ Message summary completed")
+        Log.d(TAG, "Message summary completed")
         return result.toString()
     }
     
@@ -351,7 +351,7 @@ object SMSFunctions {
      * Get specific message by index
      */
     private suspend fun executeGetMessageByIndex(arguments: String): String {
-        Log.d(TAG, "📱 Getting message by index")
+        Log.d(TAG, "Getting message by index")
         
         if (!smsReader.hasPermissions()) {
             return "Sorry, I need SMS read permission."
@@ -387,11 +387,11 @@ object SMSFunctions {
             .format(Date(message.timestamp))
         
         val result = StringBuilder()
-        result.append("📱 Message $index detailed content:\n\n")
-        result.append("👤 Sender: ${formatPhoneNumber(message.sender)}\n")
-        result.append("🕐 Time: $timeFormatted\n")
-        result.append("📝 Content:\n${message.content}\n\n")
-        result.append("💬 Would you like me to read this message for you?")
+        result.append("Message $index detailed content:\n\n")
+        result.append("Sender: ${formatPhoneNumber(message.sender)}\n")
+        result.append("Time: $timeFormatted\n")
+        result.append("Content:\n${message.content}\n\n")
+        result.append("Would you like me to read this message for you?")
         
         return result.toString()
     }
@@ -400,7 +400,7 @@ object SMSFunctions {
      * Get latest message
      */
     private suspend fun executeGetLatestMessage(): String {
-        Log.d(TAG, "📱 Getting latest message")
+        Log.d(TAG, "Getting latest message")
         
         if (!smsReader.hasPermissions()) {
             return "Sorry, I need SMS read permission."
@@ -419,10 +419,10 @@ object SMSFunctions {
         val readStatus = if (latestMessage.isRead) "Read" else "Unread"
         
         val result = StringBuilder()
-        result.append("📱 Latest message ($readStatus):\n\n")
-        result.append("👤 Sender: ${formatPhoneNumber(latestMessage.sender)}\n")
-        result.append("🕐 Time: $timeFormatted\n")
-        result.append("📝 Content:\n${latestMessage.content}")
+        result.append("Latest message ($readStatus):\n\n")
+        result.append("Sender: ${formatPhoneNumber(latestMessage.sender)}\n")
+        result.append("Time: $timeFormatted\n")
+        result.append("Content:\n${latestMessage.content}")
         
         return result.toString()
     }
@@ -472,23 +472,23 @@ object SMSFunctions {
      */
     fun getServiceStatus(): String {
         return buildString {
-            append("📱 SMS Service Status:\n")
+            append("SMS Service Status:\n")
             if (::smsReader.isInitialized) {
                 if (smsReader.hasPermissions()) {
-                    append("✅ Permission granted\n")
+                    append("Permission granted\n")
                     try {
                         val unreadCount = smsReader.getUnreadMessages().size
-                        append("📩 Unread messages: $unreadCount messages\n")
+                        append("Unread messages: $unreadCount messages\n")
                         val recentCount = smsReader.getRecentMessages(10).size
-                        append("📊 Recent messages: $recentCount messages")
+                        append("Recent messages: $recentCount messages")
                     } catch (e: Exception) {
-                        append("⚠️ Error reading messages: ${e.message}")
+                        append("Error reading messages: ${e.message}")
                     }
                 } else {
-                    append("❌ Missing SMS read permission")
+                    append("Missing SMS read permission")
                 }
             } else {
-                append("❌ Service not initialized")
+                append("Service not initialized")
             }
         }
     }
@@ -498,39 +498,39 @@ object SMSFunctions {
      */
     suspend fun testSMSService(): String {
         return try {
-            Log.d(TAG, "🔧 Testing SMS service")
+            Log.d(TAG, "Testing SMS service")
             
             if (!::smsReader.isInitialized) {
-                return "❌ SMS service not initialized"
+                return "SMS service not initialized"
             }
             
             if (!smsReader.hasPermissions()) {
-                return "❌ Missing SMS read permission, please enable permission in settings"
+                return "Missing SMS read permission, please enable permission in settings"
             }
             
-            val testResult = StringBuilder("✅ SMS service test successful!\n\n")
+            val testResult = StringBuilder("SMS service test successful!\n\n")
             
             // Test reading functionality
             val unreadMessages = smsReader.getUnreadMessages()
-            testResult.append("📩 Unread messages: ${unreadMessages.size} messages\n")
+            testResult.append("Unread messages: ${unreadMessages.size} messages\n")
             
             val recentMessages = smsReader.getRecentMessages(5)
-            testResult.append("📊 Recent messages: ${recentMessages.size} messages\n")
+            testResult.append("Recent messages: ${recentMessages.size} messages\n")
             
             if (recentMessages.isNotEmpty()) {
                 val latestMessage = recentMessages.first()
                 val timeFormatted = SimpleDateFormat("HH:mm", Locale.getDefault())
                     .format(Date(latestMessage.timestamp))
-                testResult.append("📱 Latest message: ${formatPhoneNumber(latestMessage.sender)} ($timeFormatted)\n")
+                testResult.append("Latest message: ${formatPhoneNumber(latestMessage.sender)} ($timeFormatted)\n")
             }
             
-            testResult.append("\n🎉 SMS functionality working normally, ready to use!")
+            testResult.append("\nSMS functionality working normally, ready to use!")
             
             testResult.toString()
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ SMS service test failed: ${e.message}")
-            "❌ SMS service test failed: ${e.message}"
+            Log.e(TAG, "SMS service test failed: ${e.message}")
+            "SMS service test failed: ${e.message}"
         }
     }
     
@@ -538,6 +538,6 @@ object SMSFunctions {
      * Cleanup resources
      */
     fun cleanup() {
-        Log.d(TAG, "🧹 SMS service resources cleaned up")
+        Log.d(TAG, "SMS service resources cleaned up")
     }
 }

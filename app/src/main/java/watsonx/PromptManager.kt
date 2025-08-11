@@ -3,15 +3,15 @@ package watsonx
 import android.util.Log
 
 /**
- * PromptManager - 專門管理提示詞模板和生成邏輯
- * 單一職責：只負責提示詞生成，不處理上下文管理
+ * PromptManager - Specialized for managing prompt templates and generation logic
+ * Single responsibility: Only responsible for prompt generation, not context management
  */
 class PromptManager {
     
     private val TAG = "PromptManager"
     
     /**
-     * 構建函數調用提示詞
+     * Build function calling prompt
      */
     fun buildFunctionCallingPrompt(userMessage: String, contextStr: String): String {
     return """
@@ -21,7 +21,7 @@ Weather Functions:
 - get_current_weather(city) ← WITH city parameter = that specific city's weather
 - get_weather_by_city(city) ← alternative for specific city weather
 
-⚠️ WEATHER EXAMPLES - YOU MUST FOLLOW THESE PATTERNS:
+WEATHER EXAMPLES - YOU MUST FOLLOW THESE PATTERNS:
 Input: "weather" → Output: {"name": "get_current_weather", "arguments": {}}
 Input: "weather in Paris" → Output: {"name": "get_current_weather", "arguments": {"city": "Paris"}}
 Input: "New York weather" → Output: {"name": "get_current_weather", "arguments": {"city": "New York"}}
@@ -94,7 +94,7 @@ You MUST call the appropriate function. Do not explain what you would do - just 
 }
     
     /**
-     * 構建普通對話提示詞
+     * Build normal conversation prompt
      */
     fun buildNormalPrompt(userMessage: String, contextStr: String): String {
         return """
@@ -106,14 +106,14 @@ Assistant:
     }
     
     /**
-     * 檢查響應是否包含函數調用
+     * Check if response contains function call
      */
     fun containsFunctionCall(response: String): Boolean {
         return response.contains("FUNCTION_CALL:", ignoreCase = true)
     }
     
     /**
-     * 🆕 增強版：生成最終用戶友好響應的提示詞 - 保留詳細區域信息
+     * Enhanced version: Generate final user-friendly response prompt - preserve detailed area information
      */
     fun buildFinalResponsePrompt(originalMessage: String, functionResult: String, functionName: String): String {
         val functionType = when {
@@ -134,9 +134,9 @@ $functionResult
 Please provide a natural, friendly, and detailed response based on this information.
 
 CRITICAL REQUIREMENTS:
-1. 🚨 PRESERVE ALL LOCATION DETAILS: If the data shows specific areas like "Camden Town, London" or "Westminster, London", you MUST mention the FULL area name including the specific district/neighborhood. DO NOT simplify "Camden Town, London" to just "London".
+1. PRESERVE ALL LOCATION DETAILS: If the data shows specific areas like "Camden Town, London" or "Westminster, London", you MUST mention the FULL area name including the specific district/neighborhood. DO NOT simplify "Camden Town, London" to just "London".
 
-2. 🚨 LOCATION ACCURACY: When mentioning location information:
+2. LOCATION ACCURACY: When mentioning location information:
    - Keep the exact area/district name as provided (e.g., "Camden Town", "Westminster", "Greenwich")
    - Include both the specific area AND the city (e.g., "Camden Town in London")
    - Do not generalize or simplify location details
@@ -155,16 +155,16 @@ CRITICAL REQUIREMENTS:
 6. Keep the response natural and smooth
 
 EXAMPLES of correct location responses:
-❌ Wrong: "You're in London, United Kingdom"
-✅ Correct: "You're in Camden Town, London, United Kingdom"
-✅ Correct: "You're currently in the lovely area of Westminster in London"
+Wrong: "You're in London, United Kingdom"
+Correct: "You're in Camden Town, London, United Kingdom"
+Correct: "You're currently in the lovely area of Westminster in London"
 
 Answer:
 """.trimIndent()
     }
     
     /**
-     * 🆕 增強版：生成回退響應 - 保留詳細區域信息
+     * Enhanced version: Generate fallback response - preserve detailed area information
      */
     fun generateFallbackResponse(functionResult: String, functionName: String): String {
         val functionType = when {
@@ -187,7 +187,7 @@ Answer:
     }
     
     /**
-     * 檢查是否需要函數調用 - 關鍵詞檢測邏輯
+     * Check if function call is needed - keyword detection logic
      */
     fun mightNeedFunctionCall(message: String): Boolean {
         val weatherKeywords = listOf(
@@ -203,9 +203,9 @@ Answer:
         val locationKeywords = listOf(
             "where am i", "my location", "where do i live", "my address", 
             "current location", "where i am", "my town", "my city",
-            "where am i living", "where am i living in", // 🆕 添加 "in"
+            "where am i living", "where am i living in", // Add "in"
             "what's my location", "my current position",
-            "where i live", "where i live in", // 🆕 添加 "in"
+            "where i live", "where i live in", // Add "in"
             "my place", "location"
         )
         
@@ -241,7 +241,7 @@ Answer:
             message.contains(keyword, ignoreCase = true)
         }
         
-        Log.d(TAG, "🔍 Keyword detection - Weather: $hasWeatherKeyword, SMS: $hasSMSKeyword, Location: $hasLocationKeyword, News: $hasNewsKeyword, Podcast: $hasPodcastKeyword")
+        Log.d(TAG, "Keyword detection - Weather: $hasWeatherKeyword, SMS: $hasSMSKeyword, Location: $hasLocationKeyword, News: $hasNewsKeyword, Podcast: $hasPodcastKeyword")
         
         return hasWeatherKeyword || hasSMSKeyword || hasLocationKeyword || hasNewsKeyword || hasPodcastKeyword
     }

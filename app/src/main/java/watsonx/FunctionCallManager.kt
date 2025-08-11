@@ -9,7 +9,7 @@ import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 
 /**
- * Function Call Manager - 管理所有函数调用逻辑
+ * Function Call Manager - manages all function calling logic
  */
 object FunctionCallManager {
     
@@ -21,7 +21,7 @@ object FunctionCallManager {
     }
     
     /**
-     * 检查是否需要函数调用 - 支持天气、短信和位置
+     * Check if function call is needed - supports weather, SMS and location
      */
     fun mightNeedFunctionCall(message: String): Boolean {
         val weatherKeywords = listOf(
@@ -53,20 +53,20 @@ object FunctionCallManager {
             message.contains(keyword, ignoreCase = true)
         }
         
-        Log.d(TAG, "🔍 Keyword detection - Weather: $hasWeatherKeyword, SMS: $hasSMSKeyword, Location: $hasLocationKeyword")
+        Log.d(TAG, "Keyword detection - Weather: $hasWeatherKeyword, SMS: $hasSMSKeyword, Location: $hasLocationKeyword")
         
         return hasWeatherKeyword || hasSMSKeyword || hasLocationKeyword
     }
     
     /**
-     * 检查响应是否包含函数调用
+     * Check if response contains function call
      */
     fun containsFunctionCall(response: String): Boolean {
         return response.contains("FUNCTION_CALL:", ignoreCase = true)
     }
     
     /**
-     * 提取函数调用信息
+     * Extract function call information
      */
     fun extractFunctionCall(response: String): FunctionCall? {
         return try {
@@ -97,7 +97,7 @@ object FunctionCallManager {
             if (braceCount != 0) return null // JSON incomplete
             
             val jsonStr = response.substring(jsonStart, jsonEnd + 1)
-            Log.d(TAG, "🔍 Extracted JSON: $jsonStr")
+            Log.d(TAG, "Extracted JSON: $jsonStr")
             
             val jsonElement = json.parseToJsonElement(jsonStr)
             val jsonObject = jsonElement.jsonObject
@@ -108,20 +108,20 @@ object FunctionCallManager {
             FunctionCall(name, arguments)
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Failed to parse function call: ${e.message}")
+            Log.e(TAG, "Failed to parse function call: ${e.message}")
             null
         }
     }
     
     /**
-     * 执行函数并获取结果 - 支持天气、短信和位置
+     * Execute function and get result - supports weather, SMS and location
      */
     suspend fun executeFunction(functionCall: FunctionCall): String {
         return try {
-            Log.d(TAG, "🎯 Executing function: ${functionCall.name}")
-            Log.d(TAG, "📝 Function parameters: ${functionCall.arguments}")
+            Log.d(TAG, "Executing function: ${functionCall.name}")
+            Log.d(TAG, "Function parameters: ${functionCall.arguments}")
             
-            // 根据函数类型调用对应服务
+            // Call corresponding service based on function type
             val functionResult = when {
                 functionCall.name.startsWith("get_") && functionCall.name.contains("weather") -> {
                     WeatherFunctions.execute(functionCall.name, functionCall.arguments)
@@ -138,22 +138,22 @@ object FunctionCallManager {
                     LocationFunctions.execute(functionCall.name, functionCall.arguments)
                 }
                 else -> {
-                    Log.w(TAG, "⚠️ Unknown function type: ${functionCall.name}")
+                    Log.w(TAG, "Unknown function type: ${functionCall.name}")
                     "Sorry, unrecognized function request."
                 }
             }
             
-            Log.d(TAG, "✅ Function execution completed")
+            Log.d(TAG, "Function execution completed")
             functionResult
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Function execution failed: ${e.message}")
+            Log.e(TAG, "Function execution failed: ${e.message}")
             "Sorry, there was a problem processing your request, please try again later."
         }
     }
     
     /**
-     * 获取函数类型
+     * Get function type
      */
     fun getFunctionType(functionName: String): String {
         return when {
@@ -165,7 +165,7 @@ object FunctionCallManager {
     }
     
     /**
-     * 生成回退响应
+     * Generate fallback response
      */
     fun generateFallbackResponse(functionType: String, functionResult: String): String {
         return when (functionType) {
@@ -177,7 +177,7 @@ object FunctionCallManager {
     }
     
     /**
-     * 函数调用数据类
+     * Function call data class
      */
     @Serializable
     data class FunctionCall(

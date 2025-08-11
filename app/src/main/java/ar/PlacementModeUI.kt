@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.sp
 import io.github.sceneview.node.Node
 
 /**
- * 放置模式切換按鈕組件
+ * Placement mode toggle button component
  */
 @Composable
 fun PlacementModeToggleButton(
@@ -45,7 +45,7 @@ fun PlacementModeToggleButton(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 標題
+            // Title
             Text(
                 text = "Mode",
                 style = MaterialTheme.typography.labelSmall,
@@ -53,7 +53,7 @@ fun PlacementModeToggleButton(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
             
-            // 切換按鈕
+            // Toggle button
             Button(
                 onClick = {
                     placementModeManager.switchToNextMode(
@@ -87,7 +87,7 @@ fun PlacementModeToggleButton(
                 }
             }
             
-            // 模型計數
+            // Model count
             Text(
                 text = "$modelCount cats",
                 style = MaterialTheme.typography.labelSmall,
@@ -98,7 +98,7 @@ fun PlacementModeToggleButton(
 }
 
 /**
- * 🆕 清除控制按钮组件
+ * Clear control buttons component
  */
 @Composable
 fun ClearControlButtons(
@@ -125,7 +125,7 @@ fun ClearControlButtons(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 標題
+            // Title
             Text(
                 text = "Clear",
                 style = MaterialTheme.typography.labelSmall,
@@ -133,7 +133,7 @@ fun ClearControlButtons(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
             
-            // 清除模型按钮
+            // Clear models button
             if (modelCount > 0) {
                 Button(
                     onClick = {
@@ -167,7 +167,7 @@ fun ClearControlButtons(
                 }
             }
             
-            // 清除平面数据按钮
+            // Clear plane data button
             Button(
                 onClick = {
                     placementModeManager.clearPlaneData {
@@ -200,7 +200,7 @@ fun ClearControlButtons(
                 }
             }
             
-            // 状态文本
+            // Status text
             Text(
                 text = if (modelCount > 0) "$modelCount cats" else "No models",
                 style = MaterialTheme.typography.labelSmall,
@@ -211,8 +211,8 @@ fun ClearControlButtons(
 }
 
 /**
- * 放置模式狀態欄
- * 用於在控制面板中顯示當前模式信息
+ * Placement mode status bar
+ * Used to display current mode information in control panel
  */
 @Composable
 fun PlacementModeStatusBar(
@@ -225,7 +225,7 @@ fun PlacementModeStatusBar(
     val currentMode by placementModeManager.currentMode
     
     Column(modifier = modifier) {
-        // Header - 顯示當前模式
+        // Header - display current mode
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -250,7 +250,7 @@ fun PlacementModeStatusBar(
             )
         }
         
-        // Status - 顯示模式描述
+        // Status - display mode description
         Text(
             text = currentMode.description,
             style = MaterialTheme.typography.bodySmall,
@@ -268,7 +268,7 @@ fun PlacementModeStatusBar(
 }
 
 /**
- * 🆕 完整的模式控制面板 - 包含模式切换和清除控制
+ * Complete mode control panel - includes mode switching and clear controls
  */
 @Composable
 fun PlacementModeControlPanel(
@@ -285,7 +285,7 @@ fun PlacementModeControlPanel(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.Top
     ) {
-        // 模式切换按钮
+        // Mode toggle button
         PlacementModeToggleButton(
             placementModeManager = placementModeManager,
             childNodes = childNodes,
@@ -294,7 +294,7 @@ fun PlacementModeControlPanel(
             onModelsCleared = onModelsCleared
         )
         
-        // 清除控制按钮
+        // Clear control buttons
         ClearControlButtons(
             placementModeManager = placementModeManager,
             childNodes = childNodes,
@@ -307,8 +307,8 @@ fun PlacementModeControlPanel(
 }
 
 /**
- * 放置模式選擇對話框
- * 可選的高級 UI 組件
+ * Placement mode selection dialog
+ * Optional advanced UI component
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -340,7 +340,7 @@ fun PlacementModeSelectionDialog(
                         style = MaterialTheme.typography.bodyMedium
                     )
                     
-                    // 模式選項
+                    // Mode options
                     PlacementMode.values().forEach { mode ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -406,7 +406,7 @@ fun PlacementModeSelectionDialog(
                         }
                     }
                     
-                    // 更新警告信息
+                    // Update warning information
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -417,7 +417,7 @@ fun PlacementModeSelectionDialog(
                             modifier = Modifier.padding(12.dp)
                         ) {
                             Text(
-                                text = "ℹ️ Mode switching behavior:",
+                                text = "Mode switching behavior:",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold

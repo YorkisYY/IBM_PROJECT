@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.SharedPreferences
 
 /**
- * SharedPreferences 工具類 - 統一管理本地存儲
+ * SharedPreferences utility class - Unified management of local storage
  */
 class SharedPrefsHelper(context: Context) {
     
@@ -17,42 +17,42 @@ class SharedPrefsHelper(context: Context) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     
     /**
-     * 存儲字符串
+     * Store string
      */
     fun putString(key: String, value: String) {
         sharedPrefs.edit().putString(key, value).apply()
     }
     
     /**
-     * 獲取字符串
+     * Get string
      */
     fun getString(key: String, defaultValue: String? = null): String? {
         return sharedPrefs.getString(key, defaultValue)
     }
     
     /**
-     * 存儲長整型
+     * Store long integer
      */
     fun putLong(key: String, value: Long) {
         sharedPrefs.edit().putLong(key, value).apply()
     }
     
     /**
-     * 獲取長整型
+     * Get long integer
      */
     fun getLong(key: String, defaultValue: Long = 0L): Long {
         return sharedPrefs.getLong(key, defaultValue)
     }
     
     /**
-     * 存儲雙精度浮點數
+     * Store double precision floating point number
      */
     fun putDouble(key: String, value: Double) {
         sharedPrefs.edit().putString(key, value.toString()).apply()
     }
     
     /**
-     * 獲取雙精度浮點數
+     * Get double precision floating point number
      */
     fun getDouble(key: String, defaultValue: Double = Double.NaN): Double {
         val stringValue = sharedPrefs.getString(key, null)
@@ -60,35 +60,35 @@ class SharedPrefsHelper(context: Context) {
     }
     
     /**
-     * 存儲布爾值
+     * Store boolean value
      */
     fun putBoolean(key: String, value: Boolean) {
         sharedPrefs.edit().putBoolean(key, value).apply()
     }
     
     /**
-     * 獲取布爾值
+     * Get boolean value
      */
     fun getBoolean(key: String, defaultValue: Boolean = false): Boolean {
         return sharedPrefs.getBoolean(key, defaultValue)
     }
     
     /**
-     * 移除指定鍵值
+     * Remove specified key-value pair
      */
     fun remove(key: String) {
         sharedPrefs.edit().remove(key).apply()
     }
     
     /**
-     * 清空所有數據
+     * Clear all data
      */
     fun clear() {
         sharedPrefs.edit().clear().apply()
     }
     
     /**
-     * 檢查是否包含指定鍵
+     * Check if contains specified key
      */
     fun contains(key: String): Boolean {
         return sharedPrefs.contains(key)

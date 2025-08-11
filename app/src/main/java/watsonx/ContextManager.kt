@@ -3,8 +3,8 @@ package watsonx
 import android.util.Log
 
 /**
- * ContextManager - 專門管理對話上下文和歷史記錄
- * 單一職責：只負責上下文管理，不處理提示詞生成
+ * ContextManager - Specialized for managing conversation context and history records
+ * Single responsibility: Only responsible for context management, not prompt generation
  */
 object ContextManager {
     
@@ -12,7 +12,7 @@ object ContextManager {
     private const val MAX_CONTEXT_LENGTH = 3000
     private const val MAX_HISTORY_SIZE = 20
     
-    // 存儲對話歷史
+    // Store conversation history
     private val conversationHistory = mutableListOf<ConversationItem>()
     
     data class ConversationItem(
@@ -23,7 +23,7 @@ object ContextManager {
     )
     
     /**
-     * 添加消息到歷史記錄
+     * Add message to history
      */
     fun addToHistory(content: String, role: String) {
         val item = ConversationItem(
@@ -34,7 +34,7 @@ object ContextManager {
         
         conversationHistory.add(item)
         
-        // 保持歷史記錄大小限制
+        // Maintain history size limit
         if (conversationHistory.size > MAX_HISTORY_SIZE) {
             conversationHistory.removeAt(0)
         }
@@ -43,7 +43,7 @@ object ContextManager {
     }
     
     /**
-     * 添加對話對到歷史記錄
+     * Add conversation pair to history
      */
     fun addConversation(userMessage: String, assistantResponse: String, functionCalls: List<String> = emptyList()) {
         addToHistory(userMessage, "user")
@@ -52,7 +52,7 @@ object ContextManager {
     }
     
     /**
-     * 獲取格式化的上下文字符串 - 只返回上下文數據，不生成提示詞
+     * Get formatted context string - only returns context data, does not generate prompts
      */
     fun getContextString(): String {
         if (conversationHistory.isEmpty()) {
@@ -62,7 +62,7 @@ object ContextManager {
         val contextBuilder = StringBuilder()
         contextBuilder.append("Previous conversations:\n")
         
-        // 只取最近的幾條對話
+        // Only take recent conversations
         val recentConversations = conversationHistory.takeLast(10)
         
         recentConversations.forEach { item ->
@@ -72,7 +72,7 @@ object ContextManager {
             }
         }
         
-        // 確保上下文不會太長
+        // Ensure context is not too long
         val context = contextBuilder.toString()
         return if (context.length > MAX_CONTEXT_LENGTH) {
             context.substring(0, MAX_CONTEXT_LENGTH) + "...(truncated)"
@@ -82,7 +82,7 @@ object ContextManager {
     }
     
     /**
-     * 構建帶上下文的提示詞 - 使用其他管理器生成提示詞
+     * Build contextual prompt - uses other managers to generate prompts
      */
     fun buildContextualPrompt(userMessage: String, isFunction: Boolean): String {
         val contextStr = getContextString()
@@ -96,7 +96,7 @@ object ContextManager {
     }
     
     /**
-     * 清除對話歷史
+     * Clear conversation history
      */
     fun clearConversationHistory() {
         conversationHistory.clear()
@@ -104,7 +104,7 @@ object ContextManager {
     }
     
     /**
-     * 獲取對話摘要
+     * Get conversation summary
      */
     fun getConversationSummary(): String {
         val historySize = conversationHistory.size
@@ -115,28 +115,28 @@ object ContextManager {
     }
     
     /**
-     * 獲取歷史記錄大小
+     * Get history size
      */
     fun getHistorySize(): Int {
         return conversationHistory.size
     }
     
     /**
-     * 清除所有歷史記錄 - 別名方法
+     * Clear all history - alias method
      */
     fun clearHistory() {
         clearConversationHistory()
     }
     
     /**
-     * 獲取最後一條對話
+     * Get last conversation
      */
     fun getLastConversation(): ConversationItem? {
         return conversationHistory.lastOrNull()
     }
     
     /**
-     * 檢查是否有相關的歷史上下文
+     * Check if there is relevant historical context
      */
     fun hasRelevantContext(userMessage: String): Boolean {
         if (conversationHistory.isEmpty()) return false

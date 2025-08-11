@@ -1,4 +1,4 @@
-// WatsonAIService.kt - 放在 watsonx 包下
+// WatsonAIService.kt - Place under watsonx package
 package watsonx
 
 import android.util.Log
@@ -11,12 +11,12 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
 /**
- * Watson AI 服务 - 独立文件，供 MainActivity 调用
+ * Watson AI Service - Independent file for MainActivity to call
  */
 object WatsonAIService {
     private const val TAG = "WatsonAIService"
 
-    // Watson AI 配置 - 基于您的 React 代码
+    // Watson AI Configuration - Based on your React code
     private val config = WatsonAIConfig(
         baseUrl = "https://eu-gb.ml.cloud.ibm.com",
         apiKey = "9hZtqy6PhM-zml8zuEAkfUihkHECwQSRVQApdrx7vToz",
@@ -33,12 +33,12 @@ object WatsonAIService {
         isLenient = true
     }
 
-    // 缓存的访问令牌
+    // Cached access token
     private var cachedToken: String? = null
     private var tokenExpirationTime: Long = 0
 
     /**
-     * 数据类定义
+     * Data class definitions
      */
     @Serializable
     private data class WatsonAIConfig(
@@ -88,7 +88,7 @@ object WatsonAIService {
     )
 
     /**
-     * AI 回复结果类
+     * AI response result class
      */
     data class AIResult(
         val success: Boolean,
@@ -97,10 +97,10 @@ object WatsonAIService {
     )
 
     /**
-     * 获取 IAM Token - 带缓存机制
+     * Get IAM Token - with caching mechanism
      */
     private suspend fun getIAMToken(): String = withContext(Dispatchers.IO) {
-        // 检查缓存的令牌是否有效（提前 5 分钟过期）
+        // Check if cached token is valid (expire 5 minutes early)
         if (cachedToken != null && System.currentTimeMillis() < tokenExpirationTime - 300_000) {
             return@withContext cachedToken!!
         }
@@ -131,27 +131,27 @@ object WatsonAIService {
                 throw IOException("No access token in IAM response")
             }
 
-            // 缓存令牌
+            // Cache token
             cachedToken = tokenResponse.accessToken
             tokenExpirationTime = System.currentTimeMillis() + (tokenResponse.expiresIn * 1000)
 
-            Log.d(TAG, "✅ IAM Token 获取成功")
+            Log.d(TAG, "IAM Token obtained successfully")
             return@withContext tokenResponse.accessToken
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 获取 IAM Token 失败: ${e.message}")
+            Log.e(TAG, "Failed to get IAM Token: ${e.message}")
             throw e
         }
     }
 
     /**
-     * 调用 Watson AI API
+     * Call Watson AI API
      */
     private suspend fun callWatsonAI(userMessage: String): String = withContext(Dispatchers.IO) {
         val token = getIAMToken()
         val url = "${config.baseUrl}/ml/v4/deployments/${config.deploymentId}/ai_service?version=2021-05-01"
 
-        // 构建请求体 - 与您的 React 代码格式一致
+        // Build request body - consistent with your React code format
         val requestBody = ChatRequest(
             messages = listOf(
                 ChatMessage(
@@ -161,8 +161,8 @@ object WatsonAIService {
             )
         )
 
-        Log.d(TAG, "🚀 發送請求到 Watson AI")
-        Log.d(TAG, "📝 請求內容: ${json.encodeToString(requestBody)}")
+        Log.d(TAG, "Sending request to Watson AI")
+        Log.d(TAG, "Request content: ${json.encodeToString(requestBody)}")
 
         val request = Request.Builder()
             .url(url)
@@ -174,97 +174,97 @@ object WatsonAIService {
 
         try {
             val response = client.newCall(request).execute()
-            Log.d(TAG, "📨 響應狀態: ${response.code}")
+            Log.d(TAG, "Response status: ${response.code}")
 
             if (!response.isSuccessful) {
                 val errorText = response.body?.string() ?: ""
-                Log.e(TAG, "❌ API 錯誤: $errorText")
+                Log.e(TAG, "API error: $errorText")
                 throw IOException("Watson AI API Error: ${response.code} - $errorText")
             }
 
             val responseBody = response.body?.string()
-            Log.d(TAG, "✅ 收到回復: ${responseBody?.take(200)}...")
+            Log.d(TAG, "Received response: ${responseBody?.take(200)}...")
 
             val data = json.decodeFromString<WatsonResponse>(responseBody!!)
             return@withContext parseResponse(data)
 
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Watson AI 调用失败: ${e.message}")
+            Log.e(TAG, "Watson AI call failed: ${e.message}")
             throw e
         }
     }
 
     /**
-     * 解析 Watson AI 响应 - 基于您的 React 代码逻辑
+     * Parse Watson AI response - based on your React code logic
      */
     private fun parseResponse(data: WatsonResponse): String {
-        Log.d(TAG, "🔍 解析響應數據...")
+        Log.d(TAG, "Parsing response data...")
 
-        // 尝试各种可能的响应格式
-        // 1. 聊天响应格式
+        // Try various possible response formats
+        // 1. Chat response format
         data.choices?.firstOrNull()?.let { choice ->
             choice.message?.content?.let { 
-                Log.d(TAG, "✅ 解析成功 - 聊天格式")
+                Log.d(TAG, "Parse successful - chat format")
                 return it.trim()
             }
             choice.text?.let { 
-                Log.d(TAG, "✅ 解析成功 - 文本格式")
+                Log.d(TAG, "Parse successful - text format")
                 return it.trim()
             }
         }
 
-        // 2. 生成式 AI 响应
+        // 2. Generative AI response
         data.results?.firstOrNull()?.generatedText?.let { 
-            Log.d(TAG, "✅ 解析成功 - 生成格式")
+            Log.d(TAG, "Parse successful - generation format")
             return it.trim()
         }
 
-        // 3. 其他可能的格式
+        // 3. Other possible formats
         data.generatedText?.let { 
-            Log.d(TAG, "✅ 解析成功 - 直接生成文本")
+            Log.d(TAG, "Parse successful - direct generated text")
             return it.trim()
         }
         data.result?.let { 
-            Log.d(TAG, "✅ 解析成功 - 结果格式")
+            Log.d(TAG, "Parse successful - result format")
             return it.trim()
         }
         data.response?.let { 
-            Log.d(TAG, "✅ 解析成功 - 响应格式")
+            Log.d(TAG, "Parse successful - response format")
             return it.trim()
         }
         data.content?.let { 
-            Log.d(TAG, "✅ 解析成功 - 内容格式")
+            Log.d(TAG, "Parse successful - content format")
             return it.trim()
         }
         data.text?.let { 
-            Log.d(TAG, "✅ 解析成功 - 文本格式")
+            Log.d(TAG, "Parse successful - text format")
             return it.trim()
         }
 
-        Log.e(TAG, "❌ 無法解析響應格式")
-        throw IOException("無法解析 Watson AI 響應格式")
+        Log.e(TAG, "Unable to parse response format")
+        throw IOException("Unable to parse Watson AI response format")
     }
 
     /**
-     * 主要的公开方法：获取 AI 回复
-     * @param userMessage 用户输入的消息
-     * @return AIResult 包含成功状态、回复内容和错误信息
+     * Main public method: Get AI response
+     * @param userMessage User input message
+     * @return AIResult containing success status, response content and error information
      */
     suspend fun getAIResponse(userMessage: String): AIResult {
         return try {
-            Log.d(TAG, "🤖 开始处理用户消息: $userMessage")
+            Log.d(TAG, "Starting to process user message: $userMessage")
             
             if (userMessage.trim().isEmpty()) {
                 return AIResult(
                     success = false,
                     response = "",
-                    error = "消息不能为空"
+                    error = "Message cannot be empty"
                 )
             }
 
             val response = callWatsonAI(userMessage.trim())
             
-            Log.d(TAG, "🎉 成功获取 AI 回复")
+            Log.d(TAG, "Successfully obtained AI response")
             AIResult(
                 success = true,
                 response = response,
@@ -272,64 +272,64 @@ object WatsonAIService {
             )
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ AI 处理失败: ${e.message}")
+            Log.e(TAG, "AI processing failed: ${e.message}")
             AIResult(
                 success = false,
                 response = "",
-                error = e.message ?: "未知错误"
+                error = e.message ?: "Unknown error"
             )
         }
     }
 
     /**
-     * 测试 Watson AI 连接
+     * Test Watson AI connection
      */
     suspend fun testConnection(): AIResult {
         return try {
-            Log.d(TAG, "🔧 测试 Watson AI 连接...")
+            Log.d(TAG, "Testing Watson AI connection...")
             
             val testMessage = "Hello, please introduce yourself briefly."
             val result = getAIResponse(testMessage)
             
             if (result.success) {
-                Log.d(TAG, "✅ 连接测试成功")
+                Log.d(TAG, "Connection test successful")
                 AIResult(
                     success = true,
-                    response = "连接测试成功！\n\n${result.response}",
+                    response = "Connection test successful!\n\n${result.response}",
                     error = null
                 )
             } else {
-                Log.e(TAG, "❌ 连接测试失败: ${result.error}")
+                Log.e(TAG, "Connection test failed: ${result.error}")
                 result
             }
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 连接测试异常: ${e.message}")
+            Log.e(TAG, "Connection test exception: ${e.message}")
             AIResult(
                 success = false,
                 response = "",
-                error = "连接测试失败: ${e.message}"
+                error = "Connection test failed: ${e.message}"
             )
         }
     }
 
     /**
-     * 清理缓存的令牌（可选）
+     * Clear cached token (optional)
      */
     fun clearTokenCache() {
         cachedToken = null
         tokenExpirationTime = 0
-        Log.d(TAG, "🧹 Token 缓存已清理")
+        Log.d(TAG, "Token cache cleared")
     }
 
     /**
-     * 检查服务状态
+     * Check service status
      */
     fun getServiceStatus(): String {
         return when {
-            cachedToken != null && System.currentTimeMillis() < tokenExpirationTime -> "已连接"
-            cachedToken != null -> "令牌已过期"
-            else -> "未连接"
+            cachedToken != null && System.currentTimeMillis() < tokenExpirationTime -> "Connected"
+            cachedToken != null -> "Token expired"
+            else -> "Not connected"
         }
     }
 }

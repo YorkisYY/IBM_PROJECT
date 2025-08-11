@@ -29,36 +29,36 @@ object WeatherFunctions {
      */
     fun initialize(context: Context) {
         weatherService = WeatherService(context)
-        Log.d(TAG, "✅ Weather function manager initialized")
+        Log.d(TAG, "Weather function manager initialized")
     }
     
     /**
      * Execute weather function
      */
     suspend fun execute(functionName: String, arguments: String): String {
-        Log.d(TAG, "🔧 Executing weather function: $functionName")
-        Log.d(TAG, "📝 Parameters: $arguments")
+        Log.d(TAG, "Executing weather function: $functionName")
+        Log.d(TAG, "Parameters: $arguments")
         
         return try {
             when (functionName) {
                 "get_current_weather" -> {
-                    // 🆕 檢查是否有城市參數
+                    // Check if city parameter exists
                     if (arguments != "{}" && arguments.isNotBlank()) {
-                        // 有參數 = 查詢指定城市
+                        // Has parameters = query specified city
                         executeCityWeather(arguments)
                     } else {
-                        // 沒參數 = 查詢當前位置
+                        // No parameters = query current location
                         executeCurrentWeather()
                     }
                 }
                 "get_weather_by_city" -> executeCityWeather(arguments)
                 else -> {
-                    Log.w(TAG, "⚠️ Unknown weather function: $functionName")
+                    Log.w(TAG, "Unknown weather function: $functionName")
                     "Error: Unknown weather function $functionName"
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Weather function execution failed: ${e.message}")
+            Log.e(TAG, "Weather function execution failed: ${e.message}")
             "Error: Weather data retrieval failed - ${e.message}"
         }
 }
@@ -67,7 +67,7 @@ object WeatherFunctions {
      * Execute current location weather query
      */
     private suspend fun executeCurrentWeather(): String {
-        Log.d(TAG, "🌍 Executing current location weather query")
+        Log.d(TAG, "Executing current location weather query")
         
         val weatherData = weatherService.getCurrentLocationWeather()
         
@@ -81,7 +81,7 @@ object WeatherFunctions {
             Description: ${weatherData.description}
         """.trimIndent()
         
-        Log.d(TAG, "✅ Current location weather query completed")
+        Log.d(TAG, "Current location weather query completed")
         return result
     }
     
@@ -89,7 +89,7 @@ object WeatherFunctions {
      * Execute city weather query
      */
     private suspend fun executeCityWeather(arguments: String): String {
-        Log.d(TAG, "🏙️ Executing city weather query")
+        Log.d(TAG, "Executing city weather query")
         
         // Parse parameters
         val cityName = try {
@@ -100,20 +100,20 @@ object WeatherFunctions {
             // Try to parse JSON format parameters
             if (arguments.trim().startsWith("{")) {
                 val jsonArgs = Json.parseToJsonElement(arguments).jsonObject
-                // 🆕 檢查 "city" 或 "location" 字段
+                // Check "city" or "location" field
                 jsonArgs["city"]?.jsonPrimitive?.content
-                    ?: jsonArgs["location"]?.jsonPrimitive?.content  // 🆕 也檢查 location
+                    ?: jsonArgs["location"]?.jsonPrimitive?.content  // Also check location
                     ?: throw IllegalArgumentException("City/Location field not found in parameters")
             } else {
                 // If not JSON, treat as city name directly
                 arguments.trim()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Parameter parsing failed: ${e.message}")
+            Log.e(TAG, "Parameter parsing failed: ${e.message}")
             return "Error: Cannot parse city name parameter - ${e.message}"
         }
         
-        Log.d(TAG, "🎯 Querying city: $cityName")
+        Log.d(TAG, "Querying city: $cityName")
         
         val weatherData = weatherService.getWeatherByCity(cityName)
         
@@ -127,7 +127,7 @@ object WeatherFunctions {
             Description: ${weatherData.description}
         """.trimIndent()
         
-        Log.d(TAG, "✅ City weather query completed")
+        Log.d(TAG, "City weather query completed")
         return result
     }
         
@@ -136,7 +136,7 @@ object WeatherFunctions {
      */
     suspend fun testWeatherService(): String {
         return try {
-            Log.d(TAG, "🔧 Testing weather service connection")
+            Log.d(TAG, "Testing weather service connection")
             
             val mockWeather = weatherService.getMockWeather()
             
@@ -147,7 +147,7 @@ object WeatherFunctions {
             """.trimIndent()
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Weather service test failed: ${e.message}")
+            Log.e(TAG, "Weather service test failed: ${e.message}")
             "Weather service test failed: ${e.message}"
         }
     }
@@ -169,7 +169,7 @@ object WeatherFunctions {
     fun clearCache() {
         if (::weatherService.isInitialized) {
             weatherService.clearCache()
-            Log.d(TAG, "🧹 Weather cache cleared")
+            Log.d(TAG, "Weather cache cleared")
         }
     }
 }
@@ -204,11 +204,11 @@ class WeatherService(val context: Context) {
      */
     suspend fun getCurrentLocationWeather(): WeatherData = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "🌍 Starting to get current location weather")
+            Log.d(TAG, "Starting to get current location weather")
             
             // Check location permission
             if (!hasLocationPermission()) {
-                Log.w(TAG, "⚠️ Location permission not granted, using IP location")
+                Log.w(TAG, "Location permission not granted, using IP location")
                 // Use IP location as fallback
                 return@withContext getWeatherByIP()
             }
@@ -216,19 +216,19 @@ class WeatherService(val context: Context) {
             // Get current location
             val location = getCurrentLocation()
             if (location != null) {
-                Log.d(TAG, "📍 Location obtained successfully: ${location.latitude}, ${location.longitude}")
+                Log.d(TAG, "Location obtained successfully: ${location.latitude}, ${location.longitude}")
                 return@withContext getWeatherByCoordinates(location.latitude, location.longitude)
             } else {
-                Log.w(TAG, "⚠️ Cannot get location, using IP location")
+                Log.w(TAG, "Cannot get location, using IP location")
                 // Use IP location as fallback
                 return@withContext getWeatherByIP()
             }
             
         } catch (e: SecurityException) {
-            Log.e(TAG, "❌ Permission error, using IP location: ${e.message}")
+            Log.e(TAG, "Permission error, using IP location: ${e.message}")
             return@withContext getWeatherByIP()
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Failed to get current location weather: ${e.message}")
+            Log.e(TAG, "Failed to get current location weather: ${e.message}")
             throw Exception("Failed to get current location weather: ${e.message}")
         }
     }
@@ -242,13 +242,13 @@ class WeatherService(val context: Context) {
         // Check cache
         weatherCache[cacheKey]?.let { cached ->
             if (System.currentTimeMillis() - cached.timestamp < CACHE_EXPIRY_MS) {
-                Log.d(TAG, "📦 Using cached coordinate weather data")
+                Log.d(TAG, "Using cached coordinate weather data")
                 return@withContext cached.data
             }
         }
         
         try {
-            Log.d(TAG, "🌐 Getting coordinate weather from wttr.in: $lat, $lon")
+            Log.d(TAG, "Getting coordinate weather from wttr.in: $lat, $lon")
             
             val url = "$WTTR_BASE_URL/$lat,$lon?format=j1"
             val request = Request.Builder()
@@ -265,18 +265,18 @@ class WeatherService(val context: Context) {
             val responseBody = response.body?.string()
                 ?: throw IOException("Response content is empty")
             
-            Log.d(TAG, "✅ API response successful, parsing data...")
+            Log.d(TAG, "API response successful, parsing data...")
             
             val weatherData = parseWttrResponse(responseBody)
             
             // Cache result
             weatherCache[cacheKey] = CachedWeatherData(weatherData, System.currentTimeMillis())
             
-            Log.d(TAG, "🎉 Coordinate weather obtained successfully: ${weatherData.city}")
+            Log.d(TAG, "Coordinate weather obtained successfully: ${weatherData.city}")
             return@withContext weatherData
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Failed to get coordinate weather: ${e.message}")
+            Log.e(TAG, "Failed to get coordinate weather: ${e.message}")
             throw Exception("Failed to get coordinate weather: ${e.message}")
         }
     }
@@ -290,13 +290,13 @@ class WeatherService(val context: Context) {
         // Check cache
         weatherCache[cacheKey]?.let { cached ->
             if (System.currentTimeMillis() - cached.timestamp < CACHE_EXPIRY_MS) {
-                Log.d(TAG, "📦 Using cached city weather data")
+                Log.d(TAG, "Using cached city weather data")
                 return@withContext cached.data
             }
         }
         
         try {
-            Log.d(TAG, "🏙️ Getting city weather from wttr.in: $city")
+            Log.d(TAG, "Getting city weather from wttr.in: $city")
             
             val encodedCity = java.net.URLEncoder.encode(city, "UTF-8")
             val url = "$WTTR_BASE_URL/$encodedCity?format=j1"
@@ -315,18 +315,18 @@ class WeatherService(val context: Context) {
             val responseBody = response.body?.string()
                 ?: throw IOException("Response content is empty")
             
-            Log.d(TAG, "✅ API response successful, parsing data...")
+            Log.d(TAG, "API response successful, parsing data...")
             
             val weatherData = parseWttrResponse(responseBody)
             
             // Cache result
             weatherCache[cacheKey] = CachedWeatherData(weatherData, System.currentTimeMillis())
             
-            Log.d(TAG, "🎉 City weather obtained successfully: ${weatherData.city}")
+            Log.d(TAG, "City weather obtained successfully: ${weatherData.city}")
             return@withContext weatherData
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Failed to get city weather: ${e.message}")
+            Log.e(TAG, "Failed to get city weather: ${e.message}")
             throw Exception("Failed to get city weather: ${e.message}")
         }
     }
@@ -340,13 +340,13 @@ class WeatherService(val context: Context) {
         // Check cache
         weatherCache[cacheKey]?.let { cached ->
             if (System.currentTimeMillis() - cached.timestamp < CACHE_EXPIRY_MS) {
-                Log.d(TAG, "📦 Using cached IP location weather data")
+                Log.d(TAG, "Using cached IP location weather data")
                 return@withContext cached.data
             }
         }
         
         try {
-            Log.d(TAG, "🌐 Getting weather using IP location")
+            Log.d(TAG, "Getting weather using IP location")
             
             val url = "$WTTR_BASE_URL/?format=j1"
             val request = Request.Builder()
@@ -368,11 +368,11 @@ class WeatherService(val context: Context) {
             // Cache result
             weatherCache[cacheKey] = CachedWeatherData(weatherData, System.currentTimeMillis())
             
-            Log.d(TAG, "🎉 IP location weather obtained successfully: ${weatherData.city}")
+            Log.d(TAG, "IP location weather obtained successfully: ${weatherData.city}")
             return@withContext weatherData
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Failed to get IP location weather: ${e.message}")
+            Log.e(TAG, "Failed to get IP location weather: ${e.message}")
             throw Exception("Failed to get IP location weather: ${e.message}")
         }
     }
@@ -426,8 +426,8 @@ class WeatherService(val context: Context) {
             )
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ JSON parsing failed: ${e.message}")
-            Log.e(TAG, "🔍 Response content: ${responseBody.take(500)}")
+            Log.e(TAG, "JSON parsing failed: ${e.message}")
+            Log.e(TAG, "Response content: ${responseBody.take(500)}")
             throw Exception("Weather data parsing failed: ${e.message}")
         }
     }
@@ -463,7 +463,7 @@ class WeatherService(val context: Context) {
             // Check if GPS is enabled
             if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) &&
                 !locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                Log.w(TAG, "⚠️ GPS and network location are not enabled")
+                Log.w(TAG, "GPS and network location are not enabled")
                 return@withContext null
             }
             
@@ -474,19 +474,19 @@ class WeatherService(val context: Context) {
                 try {
                     val location = locationManager.getLastKnownLocation(provider)
                     if (location != null) {
-                        Log.d(TAG, "📍 Successfully obtained location using $provider")
+                        Log.d(TAG, "Successfully obtained location using $provider")
                         return@withContext location
                     }
                 } catch (e: SecurityException) {
-                    Log.w(TAG, "⚠️ $provider permission insufficient")
+                    Log.w(TAG, "$provider permission insufficient")
                 }
             }
             
-            Log.w(TAG, "⚠️ Cannot get location information")
+            Log.w(TAG, "Cannot get location information")
             return@withContext null
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Location acquisition exception: ${e.message}")
+            Log.e(TAG, "Location acquisition exception: ${e.message}")
             return@withContext null
         }
     }
@@ -543,7 +543,7 @@ class WeatherService(val context: Context) {
             .map { it.key }
         
         expiredKeys.forEach { weatherCache.remove(it) }
-        Log.d(TAG, "🧹 Cleared ${expiredKeys.size} expired cache items")
+        Log.d(TAG, "Cleared ${expiredKeys.size} expired cache items")
     }
     
     /**
@@ -552,9 +552,9 @@ class WeatherService(val context: Context) {
     suspend fun testConnection(): String {
         return try {
             val mockWeather = getMockWeather()
-            "✅ WeatherService test successful\nMock data: ${mockWeather.city}, ${mockWeather.condition}, ${mockWeather.temperature}°C"
+            "WeatherService test successful\nMock data: ${mockWeather.city}, ${mockWeather.condition}, ${mockWeather.temperature}°C"
         } catch (e: Exception) {
-            "❌ WeatherService test failed: ${e.message}"
+            "WeatherService test failed: ${e.message}"
         }
     }
 }

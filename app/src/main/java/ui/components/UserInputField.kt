@@ -17,8 +17,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /**
- * 用戶輸入框組件（可重複使用）
- * 適用於底部輸入、搜尋框等各種輸入場景
+ * User input field component (reusable)
+ * Suitable for various input scenarios such as bottom input, search box, etc.
  */
 @Composable
 fun UserInputField(
@@ -26,11 +26,11 @@ fun UserInputField(
     onValueChange: (String) -> Unit,
     onSendClick: () -> Unit,
     modifier: Modifier = Modifier,
-    placeholder: String = "輸入訊息...",
+    placeholder: String = "Type message...",
     isEnabled: Boolean = true,
     isLoading: Boolean = false,
     maxLines: Int = 4,
-    sendButtonText: String = "➤"
+    sendButtonText: String = "Send"
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     
@@ -50,7 +50,7 @@ fun UserInputField(
                 .padding(12.dp),
             verticalAlignment = Alignment.Bottom
         ) {
-            // 輸入框
+            // Input field
             OutlinedTextField(
                 value = value,
                 onValueChange = onValueChange,
@@ -63,7 +63,7 @@ fun UserInputField(
                 enabled = isEnabled && !isLoading,
                 modifier = Modifier
                     .weight(1f)
-                    .heightIn(min = 56.dp, max = 120.dp), // 自動擴展高度
+                    .heightIn(min = 56.dp, max = 120.dp), // Auto expand height
                 keyboardOptions = KeyboardOptions(
                     capitalization = KeyboardCapitalization.Sentences,
                     imeAction = ImeAction.Send
@@ -87,7 +87,7 @@ fun UserInputField(
             
             Spacer(modifier = Modifier.width(12.dp))
             
-            // 發送按鈕
+            // Send button
             FloatingActionButton(
                 onClick = {
                     if (value.trim().isNotEmpty() && !isLoading) {
@@ -122,7 +122,7 @@ fun UserInputField(
 }
 
 /**
- * 簡化版輸入框（無卡片樣式）
+ * Simplified input field (without card style)
  */
 @Composable
 fun SimpleUserInputField(
@@ -130,7 +130,7 @@ fun SimpleUserInputField(
     onValueChange: (String) -> Unit,
     onSendClick: () -> Unit,
     modifier: Modifier = Modifier,
-    placeholder: String = "輸入訊息..."
+    placeholder: String = "Type message..."
 ) {
     Row(
         modifier = modifier
@@ -155,13 +155,13 @@ fun SimpleUserInputField(
             onClick = onSendClick,
             modifier = Modifier.size(56.dp)
         ) {
-            Text("➤")
+            Text("Send")
         }
     }
 }
 
 /**
- * 搜尋框版本
+ * Search field version
  */
 @Composable
 fun SearchInputField(
@@ -169,7 +169,7 @@ fun SearchInputField(
     onValueChange: (String) -> Unit,
     onSearchClick: () -> Unit,
     modifier: Modifier = Modifier,
-    placeholder: String = "搜尋...",
+    placeholder: String = "Search...",
     isLoading: Boolean = false
 ) {
     UserInputField(
@@ -180,6 +180,6 @@ fun SearchInputField(
         placeholder = placeholder,
         isLoading = isLoading,
         maxLines = 1,
-        sendButtonText = "🔍"
+        sendButtonText = "Search"
     )
 }

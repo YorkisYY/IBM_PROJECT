@@ -43,7 +43,7 @@ enum class PlacementMode(
 }
 
 /**
- * 真正保留平面数据的 PlacementModeManager
+ * PlacementModeManager that truly preserves plane data
  */
 class PlacementModeManager(private val context: Context) {
     
@@ -88,7 +88,7 @@ class PlacementModeManager(private val context: Context) {
     }
     
     /**
-     * 🔥 真正的模式切换 - 只清除模型，完全保留平面数据
+     * Real mode switching - only clear models, completely preserve plane data
      */
     fun switchToNextMode(
         childNodes: MutableList<Node>,
@@ -104,11 +104,11 @@ class PlacementModeManager(private val context: Context) {
         
         Log.d(TAG, "Switching mode: ${_currentMode.value.displayName} -> ${nextMode.displayName}")
         
-        // 🔥 只清除模型，不动 session
+        // Only clear models, don't touch session
         arTouchHandler?.clearAllCats(childNodes, arRenderer)
         onModelsCleared()
         
-        // 🔥 只更新配置，保留所有平面数据
+        // Only update configuration, preserve all plane data
         if (updateConfigurationOnly(nextMode)) {
             _currentMode.value = nextMode
             onModeChanged()
@@ -119,7 +119,7 @@ class PlacementModeManager(private val context: Context) {
     }
     
     /**
-     * Set specific mode - 只清除模型，保留平面数据
+     * Set specific mode - only clear models, preserve plane data
      */
     fun setMode(
         mode: PlacementMode,
@@ -148,12 +148,12 @@ class PlacementModeManager(private val context: Context) {
     }
     
     /**
-     * 🔥 只更新 ARCore 配置，完全不动 session 和平面数据
+     * Only update ARCore configuration, completely don't touch session and plane data
      */
     private fun updateConfigurationOnly(targetMode: PlacementMode): Boolean {
         return try {
             currentSession?.let { session ->
-                Log.d(TAG, "🔥 ONLY updating config for ${targetMode.displayName} - NO SESSION RESET")
+                Log.d(TAG, "ONLY updating config for ${targetMode.displayName} - NO SESSION RESET")
                 
                 val config = session.config
                 
@@ -163,7 +163,7 @@ class PlacementModeManager(private val context: Context) {
                         config.instantPlacementMode = Config.InstantPlacementMode.DISABLED
                     }
                     PlacementMode.INSTANT_ONLY -> {
-                        // 🔥 关键：停止新的平面检测，但保留已有数据
+                        // Key: stop new plane detection, but preserve existing data
                         config.planeFindingMode = Config.PlaneFindingMode.DISABLED
                         config.instantPlacementMode = Config.InstantPlacementMode.LOCAL_Y_UP
                     }
@@ -173,16 +173,16 @@ class PlacementModeManager(private val context: Context) {
                     }
                 }
                 
-                // 🔥 只调用 configure，不重置任何东西
+                // Only call configure, don't reset anything
                 session.configure(config)
                 
-                Log.d(TAG, "✅ Configuration updated successfully:")
+                Log.d(TAG, "Configuration updated successfully:")
                 Log.d(TAG, "   Mode: ${targetMode.displayName}")
                 Log.d(TAG, "   PlaneFindingMode: ${config.planeFindingMode}")
                 Log.d(TAG, "   InstantPlacementMode: ${config.instantPlacementMode}")
-                Log.d(TAG, "   🎯 ALL EXISTING PLANE DATA PRESERVED")
+                Log.d(TAG, "   ALL EXISTING PLANE DATA PRESERVED")
                 
-                // 只更新显示，不影响数据
+                // Only update display, don't affect data
                 handlePlaneVisualization(targetMode)
                 
                 true
@@ -227,18 +227,18 @@ class PlacementModeManager(private val context: Context) {
     }
     
     /**
-     * 🆕 独立的平面数据完全清除功能
+     * Independent complete plane data clearing function
      */
     fun clearPlaneData(onPlaneDataCleared: () -> Unit = {}) {
-        Log.d(TAG, "🧹 CLEARING ALL PLANE DATA - COMPLETE SESSION RESET")
+        Log.d(TAG, "CLEARING ALL PLANE DATA - COMPLETE SESSION RESET")
         resetSessionToClearAllTrackables {
-            Log.d(TAG, "✅ All plane data cleared - session completely reset")
+            Log.d(TAG, "All plane data cleared - session completely reset")
             onPlaneDataCleared()
         }
     }
     
     /**
-     * 完全重置 session 的方法（只有点击清除按钮才用）
+     * Complete session reset method (only used when clicking clear button)
      */
     private fun resetSessionToClearAllTrackables(onSessionReset: () -> Unit = {}) {
         try {
@@ -278,7 +278,7 @@ class PlacementModeManager(private val context: Context) {
                 val newSession = Session(context)
                 val config = newSession.config
                 
-                // 恢复当前模式的配置
+                // Restore current mode configuration
                 when (_currentMode.value) {
                     PlacementMode.PLANE_ONLY -> {
                         config.planeFindingMode = Config.PlaneFindingMode.HORIZONTAL_AND_VERTICAL
@@ -345,7 +345,7 @@ class PlacementModeManager(private val context: Context) {
     }
     
     /**
-     * Clear all models - 不影响平面数据
+     * Clear all models - doesn't affect plane data
      */
     fun clearAllModels(
         childNodes: MutableList<Node>,
@@ -356,7 +356,7 @@ class PlacementModeManager(private val context: Context) {
     }
     
     /**
-     * 获取当前模式状态文本
+     * Get current mode status text
      */
     fun getModeStatusText(): String {
         val mode = _currentMode.value
@@ -365,17 +365,17 @@ class PlacementModeManager(private val context: Context) {
     }
     
     /**
-     * 检查是否有模型
+     * Check if there are models
      */
     fun hasModels(): Boolean = (arTouchHandler?.getPlacedModelsCount() ?: 0) > 0
     
     /**
-     * 获取模型数量
+     * Get model count
      */
     fun getModelCount(): Int = arTouchHandler?.getPlacedModelsCount() ?: 0
     
     /**
-     * 获取当前选中的节点
+     * Get currently selected node
      */
     fun getSelectedNode(): ModelNode? = arTouchHandler?.getSelectedNode()
     
@@ -394,15 +394,15 @@ class PlacementModeManager(private val context: Context) {
             val trackingPlanes = allPlanes.filter { it.trackingState == TrackingState.TRACKING }
             val pausedPlanes = allPlanes.filter { it.trackingState == TrackingState.PAUSED }
             
-            Log.d(TAG, "🔥 PLANE DATA STATUS:")
+            Log.d(TAG, "PLANE DATA STATUS:")
             Log.d(TAG, "Total planes: ${allPlanes.size}")
             Log.d(TAG, "Tracking planes: ${trackingPlanes.size}")
             Log.d(TAG, "Paused planes: ${pausedPlanes.size}")
             
             if (allPlanes.isNotEmpty()) {
-                Log.d(TAG, "✅ PLANE DATA AVAILABLE - INSTANT MODE CAN ROTATE")
+                Log.d(TAG, "PLANE DATA AVAILABLE - INSTANT MODE CAN ROTATE")
             } else {
-                Log.d(TAG, "❌ NO PLANE DATA - INSTANT MODE ROTATION WILL FAIL")
+                Log.d(TAG, "NO PLANE DATA - INSTANT MODE ROTATION WILL FAIL")
             }
             
             val allAnchors = session.getAllAnchors()

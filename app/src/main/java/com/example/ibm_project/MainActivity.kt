@@ -65,8 +65,8 @@ import io.github.sceneview.ar.rememberARCameraNode
 import io.github.sceneview.ar.rememberARCameraStream
 
 /**
- * AR Cat Interaction App - 简化版UI设计
- * 包含模式切换和平面数据清除功能
+ * AR Cat Interaction App - Simplified UI design
+ * Includes mode switching and plane data clearing functionality
  */
 class MainActivity : ComponentActivity() {
 
@@ -97,7 +97,7 @@ class MainActivity : ComponentActivity() {
         dialogTracker = ARDialogTracker()
         placementModeManager = PlacementModeManager(this)
         
-        // 整合组件
+        // Integrate components
         placementModeManager.setARTouchHandler(touchHandler)
         
         // Request necessary permissions
@@ -193,7 +193,7 @@ class MainActivity : ComponentActivity() {
         val trackingStatus = arRenderer.trackingStatus.value
         val planeStatus = arRenderer.planeDetectionStatus.value
         
-        // 获取当前模式
+        // Get current mode
         val currentMode by placementModeManager.currentMode
         
         // SceneView 2.3.0 initialization
@@ -483,7 +483,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // 右侧控制区域 - 简化版按钮
+            // Right control area - simplified buttons
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -491,7 +491,7 @@ class MainActivity : ComponentActivity() {
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
             ) {
-                // 模式切换按钮 - 简化版
+                // Mode toggle button - simplified version
                 Card(
                     modifier = Modifier
                         .width(80.dp)
@@ -550,7 +550,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 
-                // 清除平面数据按钮
+                // Clear plane data button
                 Card(
                     modifier = Modifier
                         .width(80.dp)
@@ -585,8 +585,8 @@ class MainActivity : ComponentActivity() {
                                 verticalArrangement = Arrangement.Center
                             ) {
                                 Text(
-                                    text = "🧹",
-                                    fontSize = 20.sp
+                                    text = "Clear",
+                                    fontSize = 16.sp
                                 )
                                 Text(
                                     text = "Planes",
@@ -600,7 +600,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 
-                // 设置按钮 - 简化版
+                // Settings button - simplified version
                 Card(
                     modifier = Modifier
                         .width(80.dp)
@@ -637,7 +637,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         
-            // 简化版控制面板
+            // Simplified control panel
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -651,7 +651,7 @@ class MainActivity : ComponentActivity() {
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
-                    // Header - 只显示跟踪状态
+                    // Header - only show tracking status
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -670,7 +670,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     
-                    // 状态信息
+                    // Status information
                     Text(
                         text = planeStatus,
                         style = MaterialTheme.typography.bodySmall,
@@ -680,13 +680,13 @@ class MainActivity : ComponentActivity() {
                     
                     Spacer(modifier = Modifier.height(12.dp))
                     
-                    // 统计和控制 - 移除图标
+                    // Statistics and control - remove icons
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // 平面数量
+                        // Plane count
                         Text(
                             text = "$planesCount Planes",
                             style = MaterialTheme.typography.bodySmall,
@@ -694,13 +694,13 @@ class MainActivity : ComponentActivity() {
                                    else MaterialTheme.colorScheme.secondary
                         )
                         
-                        // 模型数量
+                        // Model count
                         Text(
                             text = "$modelsCount Cats" + if (touchHandler.getFirstCatModel() != null) " (Dialog)" else "",
                             style = MaterialTheme.typography.bodySmall
                         )
                         
-                        // 清除按钮
+                        // Clear button
                         if (modelsCount > 0) {
                             TextButton(
                                 onClick = {
@@ -721,7 +721,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             
-            // 简化版设置对话框
+            // Simplified settings dialog
             if (showSettings) {
                 AlertDialog(
                     onDismissRequest = { showSettings = false },
