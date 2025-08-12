@@ -56,10 +56,28 @@ android {
         noCompress += listOf("filamat", "ktx")
     }
 
-    // ARCore related configuration
+    // ARCore related configuration + META-INF conflict resolution
     packaging {
         resources {
             pickFirsts += listOf("**/libc++_shared.so", "**/libjsc.so")
+            excludes += listOf(
+                "META-INF/LICENSE.md",
+                "META-INF/LICENSE.txt", 
+                "META-INF/LICENSE",
+                "META-INF/NOTICE.md",
+                "META-INF/NOTICE.txt",
+                "META-INF/NOTICE",
+                "META-INF/ASL2.0",
+                "META-INF/{AL2.0,LGPL2.1}",
+                "META-INF/DEPENDENCIES"
+            )
+        }
+    }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            isReturnDefaultValues = true
         }
     }
 }
@@ -85,6 +103,7 @@ dependencies {
 
     // Compose BOM and core dependencies - Use BOM for unified version management
     implementation(platform("androidx.compose:compose-bom:2024.02.00"))
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
@@ -110,8 +129,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-    implementation("io.github.sceneview:sceneview:2.3.0")
-    implementation("io.github.sceneview:arsceneview:2.3.0")
+    
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
@@ -124,9 +142,29 @@ dependencies {
 
     // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
-
-    // Test dependencies
+    
+    // ===== Unit Testing =====
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.11.1")  // Android Unit Tests
+    testImplementation("io.mockk:mockk:1.13.8")  // Kotlin Mocking
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")  // Coroutine Testing
+    testImplementation("androidx.arch.core:core-testing:2.2.0")  // LiveData Testing
+    testImplementation("app.cash.turbine:turbine:1.0.0")  // Flow Testing
+    testImplementation("com.google.truth:truth:1.1.4")  // Better Assertions
+    testImplementation("org.mockito:mockito-core:5.7.0")  
+    testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")  
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")  // Mock HTTP Server
+    
+    // ===== Android Integration Testing =====
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation("androidx.test:runner:1.5.2")
+    androidTestImplementation("androidx.test:rules:1.5.0")
+    androidTestImplementation("androidx.test.espresso:espresso-intents:3.5.1")  // Intent Testing
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")  // Coroutine Testing for Android Tests
+    
+    // ===== Compose Testing =====
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")  // BOM manages version
+    debugImplementation("androidx.compose.ui:ui-test-manifest")     
+    debugImplementation("androidx.compose.ui:ui-tooling")          
 }
