@@ -5,16 +5,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.geometry.Offset
 import android.view.MotionEvent
 import com.google.ar.core.*
+import com.google.android.filament.Engine
 import io.github.sceneview.collision.HitResult
 import io.github.sceneview.collision.CollisionSystem
 import io.github.sceneview.loaders.ModelLoader
 import io.github.sceneview.math.Position
 import io.github.sceneview.node.ModelNode
 import io.github.sceneview.node.Node
+import io.github.sceneview.node.CameraNode
 
 /**
  * 測試用假 AR 會話管理器 - 完全避開 ARCore 原生調用
- * 模擬你的 Compose 狀態管理，但不觸碰任何原生代碼
+ * 修正版：匹配新的 nullable 接口
  */
 class FakeARSessionManager : ARSessionManager {
     
@@ -31,24 +33,24 @@ class FakeARSessionManager : ARSessionManager {
     override val planeDetectionStatus: State<String> = _planeDetectionStatus
     override val canPlaceObjects: State<Boolean> = _canPlaceObjects
     
-    // 假會話管理 - 不調用任何 ARCore API，但模擬行為
-    override fun configureSession(arSession: Session, config: Config) {
+    // 假會話管理 - 不調用任何 ARCore API，但模擬行為 - 修正方法簽名
+    override fun configureSession(arSession: Session?, config: Config?) {
         // 測試模式：記錄調用但不執行 ARCore 邏輯
         _trackingStatus.value = "測試會話已配置"
         println("測試日誌: configureSession 被調用")
     }
     
-    override fun onSessionCreated(arSession: Session) {
+    override fun onSessionCreated(arSession: Session?) {
         _trackingStatus.value = "測試會話已創建"
         println("測試日誌: onSessionCreated 被調用")
     }
     
-    override fun onSessionResumed(arSession: Session) {
+    override fun onSessionResumed(arSession: Session?) {
         _trackingStatus.value = "測試會話已恢復"
         _canPlaceObjects.value = true
     }
     
-    override fun onSessionPaused(arSession: Session) {
+    override fun onSessionPaused(arSession: Session?) {
         _trackingStatus.value = "測試會話已暫停"
         _canPlaceObjects.value = false
     }
@@ -58,7 +60,7 @@ class FakeARSessionManager : ARSessionManager {
         _canPlaceObjects.value = false
     }
     
-    override fun onSessionUpdated(arSession: Session, updatedFrame: Frame) {
+    override fun onSessionUpdated(arSession: Session?, updatedFrame: Frame?) {
         // 模擬平面檢測進度
         if (_detectedPlanesCount.value < 5) {
             _detectedPlanesCount.value++
@@ -109,6 +111,7 @@ class FakeARSessionManager : ARSessionManager {
 
 /**
  * 測試用假交互管理器 - 模擬觸摸交互，但不調用 ARCore
+ * 修正版：匹配新的 nullable 接口
  */
 class FakeARInteractionManager : ARInteractionManager {
     
@@ -120,17 +123,18 @@ class FakeARInteractionManager : ARInteractionManager {
     override var rotationSensitivityX: Float = 0.3f
     override var rotationSensitivityY: Float = 0.3f
     
+    // 修正方法簽名匹配新接口
     override fun handleSceneViewTouchDown(
         motionEvent: MotionEvent,
         hitResult: HitResult?,
         frame: Frame?,
         session: Session?,
-        modelLoader: ModelLoader,
+        modelLoader: ModelLoader?,
         childNodes: MutableList<Node>,
-        engine: com.google.android.filament.Engine,
+        engine: Engine?,
         arSessionManager: ARSessionManager,
-        collisionSystem: CollisionSystem,
-        cameraNode: io.github.sceneview.node.CameraNode,
+        collisionSystem: CollisionSystem?,
+        cameraNode: CameraNode?,
         onFirstCatCreated: (ModelNode?) -> Unit
     ) {
         // 測試模式：模擬放置邏輯，不調用 ARCore

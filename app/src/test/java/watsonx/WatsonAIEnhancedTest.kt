@@ -345,8 +345,3 @@ class WatsonAIEnhancedTest {
     }
 }
 
-//JSON 解析
-//關鍵字檢測
-//上下文管理
-//字串處理
-//條件判斷
