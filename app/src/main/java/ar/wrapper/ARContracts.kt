@@ -14,18 +14,18 @@ import io.github.sceneview.node.Node
 import io.github.sceneview.node.CameraNode
 
 /**
- * AR 會話管理器接口 - 對應你的 ARSceneViewRenderer
- * 修正版：支持 nullable 參數，適合測試環境
+ * AR Session Manager Interface - Corresponding to your ARSceneViewRenderer
+ * Fixed version: Support nullable parameters, suitable for test environment
  */
 interface ARSessionManager {
-    // Compose 狀態觀察 - 保持你的 mutableStateOf 風格
+    // Compose state observation - Maintain your mutableStateOf style
     val detectedPlanesCount: State<Int>
     val placedModelsCount: State<Int>
     val trackingStatus: State<String>
     val planeDetectionStatus: State<String>
     val canPlaceObjects: State<Boolean>
     
-    // AR 會話生命週期 - 改成 nullable 支持測試
+    // AR session lifecycle - Changed to nullable to support testing
     fun configureSession(arSession: Session?, config: Config?)
     fun onSessionCreated(arSession: Session?)
     fun onSessionResumed(arSession: Session?)
@@ -33,7 +33,7 @@ interface ARSessionManager {
     fun onSessionFailed(exception: Exception)
     fun onSessionUpdated(arSession: Session?, updatedFrame: Frame?)
     
-    // 模型管理 - 保持不變
+    // Model management - Keep unchanged
     fun clearAllModels(childNodes: MutableList<Node>)
     fun incrementModelCount()
     fun isReadyForPlacement(): Boolean
@@ -42,44 +42,44 @@ interface ARSessionManager {
 }
 
 /**
- * AR 交互管理器接口 - 對應你的 ARTouchHandler
- * 修正版：支持 nullable 參數，適合測試環境
+ * AR Interaction Manager Interface - Corresponding to your ARTouchHandler
+ * Fixed version: Support nullable parameters, suitable for test environment
  */
 interface ARInteractionManager {
-    // 主要觸摸處理 - 關鍵參數改成 nullable
+    // Main touch handling - Key parameters changed to nullable
     fun handleSceneViewTouchDown(
         motionEvent: MotionEvent,
         hitResult: HitResult?,
-        frame: Frame?,                   // 改成 nullable
-        session: Session?,               // 改成 nullable
-        modelLoader: ModelLoader?,       // 改成 nullable
+        frame: Frame?,                   // Changed to nullable
+        session: Session?,               // Changed to nullable
+        modelLoader: ModelLoader?,       // Changed to nullable
         childNodes: MutableList<Node>,
-        engine: Engine?,                 // 改成 nullable
+        engine: Engine?,                 // Changed to nullable
         arSessionManager: ARSessionManager,
-        collisionSystem: CollisionSystem?, // 改成 nullable
-        cameraNode: CameraNode?,         // 改成 nullable
+        collisionSystem: CollisionSystem?, // Changed to nullable
+        cameraNode: CameraNode?,         // Changed to nullable
         onFirstCatCreated: (ModelNode?) -> Unit
     )
     
-    // 觸摸手勢處理 - 保持不變
+    // Touch gesture handling - Keep unchanged
     fun handleImprovedTouchMove(motionEvent: MotionEvent)
     fun handleImprovedTouchUp(arSessionManager: ARSessionManager)
     fun updateSmoothRotation()
     
-    // 狀態查詢 - 保持不變
+    // State queries - Keep unchanged
     fun getSelectedNode(): ModelNode?
     fun getFirstCatModel(): ModelNode?
     fun getFirstCatBoundingHeight(): Float
     fun getPlacedModelsCount(): Int
     fun getModelScreenPosition(modelName: String): Offset?
     
-    // 管理操作 - 保持不變
+    // Management operations - Keep unchanged
     fun clearAllCats(childNodes: MutableList<Node>, arSessionManager: ARSessionManager)
     fun configureCollisionDetection(safePlacementDistance: Float, touchDetectionRadius: Float)
     fun debugCollisionDetection()
     fun isValidPlacementPosition(worldPosition: Position, collisionSystem: CollisionSystem?): Boolean
     
-    // 配置屬性 - 保持不變
+    // Configuration properties - Keep unchanged
     var rotationSensitivityX: Float
     var rotationSensitivityY: Float
     fun resetSensitivityToDefault()

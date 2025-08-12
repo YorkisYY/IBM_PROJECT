@@ -17,8 +17,8 @@ import io.github.sceneview.node.Node
 import io.github.sceneview.node.CameraNode
 
 /**
- * 生產環境 AR 會話管理器 - 透明包裝你的 ARSceneViewRenderer
- * 修正版：支持 nullable 參數，適合測試環境
+ * Production AR Session Manager - Transparent wrapper for your ARSceneViewRenderer
+ * Fixed version: Support nullable parameters, suitable for test environment
  */
 class ProductionARSessionManager(
     private val renderer: ARSceneViewRenderer = ARSceneViewRenderer()
@@ -28,14 +28,14 @@ class ProductionARSessionManager(
         private const val TAG = "ProductionARSessionManager"
     }
     
-    // 直接暴露你的原始狀態 - 零開銷
+    // Directly expose your original state - zero overhead
     override val detectedPlanesCount: State<Int> = renderer.detectedPlanesCount
     override val placedModelsCount: State<Int> = renderer.placedModelsCount
     override val trackingStatus: State<String> = renderer.trackingStatus
     override val planeDetectionStatus: State<String> = renderer.planeDetectionStatus
     override val canPlaceObjects: State<Boolean> = renderer.canPlaceObjects
     
-    // 完全透明的方法委派 - 添加 null 檢查支持測試
+    // Completely transparent method delegation - add null check support for testing
     override fun configureSession(arSession: Session?, config: Config?) {
         if (arSession != null && config != null) {
             renderer.configureSession(arSession, config)
@@ -82,7 +82,7 @@ class ProductionARSessionManager(
     
     override fun onSessionFailed(exception: Exception) {
         renderer.onSessionFailed(exception)
-        // 測試模式也要正確處理失敗狀態
+        // Test mode should also handle failure state correctly
         renderer.canPlaceObjects.value = false
     }
     
@@ -101,7 +101,7 @@ class ProductionARSessionManager(
         }
     }
     
-    // 其他方法保持不變
+    // Other methods remain unchanged
     override fun clearAllModels(childNodes: MutableList<Node>) = 
         renderer.clearAllModels(childNodes)
     
@@ -117,13 +117,13 @@ class ProductionARSessionManager(
     override fun getDebugInfo(): String = 
         renderer.getDebugInfo()
         
-    // 提供原始實例訪問（內部使用）
+    // Provide original instance access (internal use)
     internal fun getOriginalRenderer(): ARSceneViewRenderer = renderer
 }
 
 /**
- * 生產環境 AR 交互管理器 - 透明包裝你的 ARTouchHandler
- * 修正版：支持 nullable 參數，適合測試環境
+ * Production AR Interaction Manager - Transparent wrapper for your ARTouchHandler
+ * Fixed version: Support nullable parameters, suitable for test environment
  */
 class ProductionARInteractionManager(
     private val handler: ARTouchHandler = ARTouchHandler()
@@ -146,10 +146,10 @@ class ProductionARInteractionManager(
         cameraNode: CameraNode?,
         onFirstCatCreated: (ModelNode?) -> Unit
     ) {
-        // 安全轉換：從接口獲取原始實現
+        // Safe conversion: Get original implementation from interface
         val actualRenderer = when (arSessionManager) {
             is ProductionARSessionManager -> arSessionManager.getOriginalRenderer()
-            else -> throw IllegalStateException("不支持的 ARSessionManager 實現: ${arSessionManager::class.java}")
+            else -> throw IllegalStateException("Unsupported ARSessionManager implementation: ${arSessionManager::class.java}")
         }
         
         // Check critical parameters, if test mode (has null) log but continue
@@ -161,7 +161,7 @@ class ProductionARInteractionManager(
         if (session != null && engine != null && modelLoader != null && 
             collisionSystem != null && cameraNode != null) {
             
-            // 完全透明調用你的原始方法 - 邏輯完全不變
+            // Completely transparent call to your original method - logic completely unchanged
             handler.handleSceneViewTouchDown(
                 motionEvent = motionEvent,
                 hitResult = hitResult,
@@ -200,14 +200,14 @@ class ProductionARInteractionManager(
     override fun handleImprovedTouchUp(arSessionManager: ARSessionManager) {
         val actualRenderer = when (arSessionManager) {
             is ProductionARSessionManager -> arSessionManager.getOriginalRenderer()
-            else -> throw IllegalStateException("不支持的 ARSessionManager 實現")
+            else -> throw IllegalStateException("Unsupported ARSessionManager implementation")
         }
         handler.handleImprovedTouchUp(actualRenderer)
     }
     
     override fun updateSmoothRotation() = handler.updateSmoothRotation()
     
-    // 狀態訪問完全透明
+    // State access completely transparent
     override fun getSelectedNode(): ModelNode? = handler.getSelectedNode()
     override fun getFirstCatModel(): ModelNode? = handler.getFirstCatModel()
     override fun getFirstCatBoundingHeight(): Float = handler.getFirstCatBoundingHeight()
@@ -217,7 +217,7 @@ class ProductionARInteractionManager(
     override fun clearAllCats(childNodes: MutableList<Node>, arSessionManager: ARSessionManager) {
         val actualRenderer = when (arSessionManager) {
             is ProductionARSessionManager -> arSessionManager.getOriginalRenderer()
-            else -> throw IllegalStateException("不支持的 ARSessionManager 實現")
+            else -> throw IllegalStateException("Unsupported ARSessionManager implementation")
         }
         handler.clearAllCats(childNodes, actualRenderer)
     }
@@ -230,7 +230,7 @@ class ProductionARInteractionManager(
     override fun isValidPlacementPosition(worldPosition: Position, collisionSystem: CollisionSystem?): Boolean = 
         handler.isValidPlacementPosition(worldPosition, collisionSystem)
     
-    // 配置屬性透明代理
+    // Configuration properties transparent proxy
     override var rotationSensitivityX: Float
         get() = handler.rotationSensitivityX
         set(value) { handler.rotationSensitivityX = value }

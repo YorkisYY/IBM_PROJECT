@@ -15,16 +15,16 @@ import io.github.sceneview.node.Node
 import io.github.sceneview.node.CameraNode
 
 /**
- * 測試用假 AR 會話管理器 - 完全避開 ARCore 原生調用
- * 修正版：匹配新的 nullable 接口
+ * Fake AR Session Manager for testing - Completely avoid ARCore native calls
+ * Fixed version: Match new nullable interface
  */
 class FakeARSessionManager : ARSessionManager {
     
-    // 模擬你的 Compose 狀態 - 完全相同的類型
+    // Simulate your Compose state - exactly same types
     private val _detectedPlanesCount = mutableStateOf(0)
     private val _placedModelsCount = mutableStateOf(0)
-    private val _trackingStatus = mutableStateOf("測試模式就緒")
-    private val _planeDetectionStatus = mutableStateOf("測試平面檢測啟動")
+    private val _trackingStatus = mutableStateOf("Test mode ready")
+    private val _planeDetectionStatus = mutableStateOf("Test plane detection active")
     private val _canPlaceObjects = mutableStateOf(true)
     
     override val detectedPlanesCount: State<Int> = _detectedPlanesCount
@@ -33,44 +33,44 @@ class FakeARSessionManager : ARSessionManager {
     override val planeDetectionStatus: State<String> = _planeDetectionStatus
     override val canPlaceObjects: State<Boolean> = _canPlaceObjects
     
-    // 假會話管理 - 不調用任何 ARCore API，但模擬行為 - 修正方法簽名
+    // Fake session management - Don't call any ARCore API, but simulate behavior - Fixed method signature
     override fun configureSession(arSession: Session?, config: Config?) {
-        // 測試模式：記錄調用但不執行 ARCore 邏輯
-        _trackingStatus.value = "測試會話已配置"
-        println("測試日誌: configureSession 被調用")
+        // Test mode: Log call but don't execute ARCore logic
+        _trackingStatus.value = "Test session configured"
+        println("Test log: configureSession called")
     }
     
     override fun onSessionCreated(arSession: Session?) {
-        _trackingStatus.value = "測試會話已創建"
-        println("測試日誌: onSessionCreated 被調用")
+        _trackingStatus.value = "Test session created"
+        println("Test log: onSessionCreated called")
     }
     
     override fun onSessionResumed(arSession: Session?) {
-        _trackingStatus.value = "測試會話已恢復"
+        _trackingStatus.value = "Test session resumed"
         _canPlaceObjects.value = true
     }
     
     override fun onSessionPaused(arSession: Session?) {
-        _trackingStatus.value = "測試會話已暫停"
+        _trackingStatus.value = "Test session paused"
         _canPlaceObjects.value = false
     }
     
     override fun onSessionFailed(exception: Exception) {
-        _trackingStatus.value = "測試會話失敗: ${exception.message}"
+        _trackingStatus.value = "Test session failed: ${exception.message}"
         _canPlaceObjects.value = false
     }
     
     override fun onSessionUpdated(arSession: Session?, updatedFrame: Frame?) {
-        // 模擬平面檢測進度
+        // Simulate plane detection progress
         if (_detectedPlanesCount.value < 5) {
             _detectedPlanesCount.value++
-            _planeDetectionStatus.value = "測試檢測到 ${_detectedPlanesCount.value} 個平面"
+            _planeDetectionStatus.value = "Test detected ${_detectedPlanesCount.value} planes"
         }
     }
     
     override fun clearAllModels(childNodes: MutableList<Node>) {
         _placedModelsCount.value = 0
-        _planeDetectionStatus.value = "測試: 所有模型已清除"
+        _planeDetectionStatus.value = "Test: All models cleared"
     }
     
     override fun incrementModelCount() {
@@ -80,38 +80,38 @@ class FakeARSessionManager : ARSessionManager {
     override fun isReadyForPlacement(): Boolean = _canPlaceObjects.value
     
     override fun getUserFriendlyStatus(): String = 
-        "測試模式: 準備放置貓咪! (已放置 ${_placedModelsCount.value} 隻)"
+        "Test mode: Ready to place cats! (Placed ${_placedModelsCount.value})"
     
     override fun getDebugInfo(): String = """
-        === 測試 AR 調試信息 ===
-        平面數: ${_detectedPlanesCount.value}
-        模型數: ${_placedModelsCount.value}
-        狀態: ${_trackingStatus.value}
-        可放置: ${_canPlaceObjects.value}
-        模式: 測試模式 (無 ARCore)
-        ========================
+        === Test AR Debug Info ===
+        Planes: ${_detectedPlanesCount.value}
+        Models: ${_placedModelsCount.value}
+        Status: ${_trackingStatus.value}
+        Can Place: ${_canPlaceObjects.value}
+        Mode: Test mode (no ARCore)
+        =========================
     """.trimIndent()
     
-    // 測試輔助方法 - 用於模擬各種場景
+    // Test helper methods - for simulating various scenarios
     fun simulatePlaneDetection(count: Int) {
         _detectedPlanesCount.value = count
-        _planeDetectionStatus.value = "測試: 模擬檢測到 $count 個平面"
+        _planeDetectionStatus.value = "Test: Simulated detection of $count planes"
     }
     
     fun simulateTrackingLoss() {
-        _trackingStatus.value = "測試追蹤丟失"
+        _trackingStatus.value = "Test tracking lost"
         _canPlaceObjects.value = false
     }
     
     fun simulateTrackingRecovered() {
-        _trackingStatus.value = "測試追蹤恢復"
+        _trackingStatus.value = "Test tracking recovered"
         _canPlaceObjects.value = true
     }
 }
 
 /**
- * 測試用假交互管理器 - 模擬觸摸交互，但不調用 ARCore
- * 修正版：匹配新的 nullable 接口
+ * Fake interaction manager for testing - Simulate touch interaction, but don't call ARCore
+ * Fixed version: Match new nullable interface
  */
 class FakeARInteractionManager : ARInteractionManager {
     
@@ -119,11 +119,11 @@ class FakeARInteractionManager : ARInteractionManager {
     private var fakeFirstCatModel: ModelNode? = null
     private var fakePlacedModelsCount = 0
     
-    // 模擬你的配置屬性
+    // Simulate your configuration properties
     override var rotationSensitivityX: Float = 0.3f
     override var rotationSensitivityY: Float = 0.3f
     
-    // 修正方法簽名匹配新接口
+    // Fixed method signature to match new interface
     override fun handleSceneViewTouchDown(
         motionEvent: MotionEvent,
         hitResult: HitResult?,
@@ -137,30 +137,30 @@ class FakeARInteractionManager : ARInteractionManager {
         cameraNode: CameraNode?,
         onFirstCatCreated: (ModelNode?) -> Unit
     ) {
-        // 測試模式：模擬放置邏輯，不調用 ARCore
+        // Test mode: Simulate placement logic, don't call ARCore
         fakePlacedModelsCount++
         arSessionManager.incrementModelCount()
         
-        println("測試日誌: 模擬在 (${motionEvent.x}, ${motionEvent.y}) 放置貓咪")
+        println("Test log: Simulated placing cat at (${motionEvent.x}, ${motionEvent.y})")
         
-        // 模擬第一隻貓咪創建
+        // Simulate first cat creation
         if (fakeFirstCatModel == null) {
-            fakeFirstCatModel = null  // 測試模式使用 null
+            fakeFirstCatModel = null  // Test mode uses null
             onFirstCatCreated(null)
         }
     }
     
-    // 其他方法的測試實現
+    // Test implementations for other methods
     override fun handleImprovedTouchMove(motionEvent: MotionEvent) {
-        println("測試日誌: 模擬觸摸移動")
+        println("Test log: Simulated touch move")
     }
     
     override fun handleImprovedTouchUp(arSessionManager: ARSessionManager) {
-        println("測試日誌: 模擬觸摸結束")
+        println("Test log: Simulated touch up")
     }
     
     override fun updateSmoothRotation() {
-        // 測試模式：不做實際旋轉
+        // Test mode: Don't do actual rotation
     }
     
     override fun getSelectedNode(): ModelNode? = fakeSelectedNode
@@ -174,37 +174,37 @@ class FakeARInteractionManager : ARInteractionManager {
         fakeFirstCatModel = null
         fakeSelectedNode = null
         arSessionManager.clearAllModels(childNodes)
-        println("測試日誌: 清除所有測試貓咪")
+        println("Test log: Cleared all test cats")
     }
     
     override fun configureCollisionDetection(safePlacementDistance: Float, touchDetectionRadius: Float) {
-        println("測試日誌: 配置碰撞檢測 - 安全距離: $safePlacementDistance, 觸摸半徑: $touchDetectionRadius")
+        println("Test log: Configure collision detection - Safe distance: $safePlacementDistance, Touch radius: $touchDetectionRadius")
     }
     
     override fun debugCollisionDetection() {
-        println("測試日誌: 調試碰撞檢測")
+        println("Test log: Debug collision detection")
     }
     
     override fun isValidPlacementPosition(worldPosition: Position, collisionSystem: CollisionSystem?): Boolean {
-        println("測試日誌: 檢查位置有效性 - 位置: $worldPosition")
-        return true  // 測試模式總是返回有效
+        println("Test log: Check position validity - Position: $worldPosition")
+        return true  // Test mode always returns valid
     }
     
     override fun resetSensitivityToDefault() {
         rotationSensitivityX = 0.3f
         rotationSensitivityY = 0.3f
-        println("測試日誌: 重設旋轉靈敏度為預設值")
+        println("Test log: Reset rotation sensitivity to default values")
     }
     
-    // 測試輔助方法
+    // Test helper methods
     fun simulateModelSelection() {
-        fakeSelectedNode = null  // 測試模式使用 null
-        println("測試日誌: 模擬選中模型")
+        fakeSelectedNode = null  // Test mode uses null
+        println("Test log: Simulated model selection")
     }
     
     fun simulatePlaceFirstCat() {
         fakeFirstCatModel = null
         fakePlacedModelsCount = 1
-        println("測試日誌: 模擬放置第一隻貓")
+        println("Test log: Simulated placing first cat")
     }
 }
