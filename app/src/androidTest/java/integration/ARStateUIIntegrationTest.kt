@@ -1,4 +1,4 @@
-// app/src/androidTest/java/integration/ARStateUIIntegrationTest.kt - 完整修復版
+// app/src/androidTest/java/integration/ARStateUIIntegrationTest.kt - Complete fix version
 
 package integration
 
@@ -14,7 +14,7 @@ import ar.PlacementMode
 import com.google.ar.core.Session
 
 /**
- * AR State UI Integration Test - 基於實際代碼邏輯修復
+ * AR State UI Integration Test - Fixed based on actual code logic
  */
 @RunWith(AndroidJUnit4::class)
 class ARStateUIIntegrationTest {
@@ -72,17 +72,17 @@ class ARStateUIIntegrationTest {
         val arRenderer = ARSceneViewRenderer()
         val childNodes = mutableListOf<io.github.sceneview.node.Node>()
         
-        // 問題：switchToNextMode 需要 session 才能成功
-        // 在測試環境中 session 是 null，所以模式不會切換
-        // 我們應該測試沒有 session 時的行為
+        // Issue: switchToNextMode needs session to succeed
+        // In test environment session is null, so mode won't switch
+        // We should test behavior when there's no session
         
         val initialMode = placementModeManager.currentMode.value
         assertEquals(PlacementMode.PLANE_ONLY, initialMode)
         
-        // 嘗試切換模式（預期會失敗，因為沒有 session）
+        // Try to switch mode (expected to fail because no session)
         placementModeManager.switchToNextMode(childNodes, arRenderer)
         
-        // 驗證模式沒有改變（這是正確的行為，因為沒有 session）
+        // Verify mode didn't change (this is correct behavior because no session)
         assertEquals("Mode should not change without session", 
             PlacementMode.PLANE_ONLY, placementModeManager.currentMode.value)
     }
@@ -94,19 +94,19 @@ class ARStateUIIntegrationTest {
         val childNodes = mutableListOf<io.github.sceneview.node.Node>()
         
         try {
-            // 嘗試創建一個模擬 session（這可能會失敗）
+            // Try to create a mock session (this may fail)
             val session = Session(context)
             placementModeManager.setSession(session)
             
             val initialMode = placementModeManager.currentMode.value
             placementModeManager.switchToNextMode(childNodes, arRenderer)
             
-            // 現在應該會切換成功
+            // Now should switch successfully
             assertEquals(PlacementMode.INSTANT_ONLY, placementModeManager.currentMode.value)
             
             session.close()
         } catch (e: Exception) {
-            // 如果無法創建 session（如在沒有 ARCore 的環境），跳過這個測試
+            // If can't create session (like in environment without ARCore), skip this test
             assertTrue("Cannot test mode switching without ARCore session", true)
         }
     }
@@ -189,7 +189,7 @@ class ARStateUIIntegrationTest {
         
         val statusText = placementModeManager.getModeStatusText()
         
-        // 基於實際的 getModeStatusText 實作
+        // Based on actual getModeStatusText implementation
         assertTrue("Status should contain mode display", 
             statusText.contains("P Plane") || statusText.contains("Plane"))
         assertTrue("Status should contain model count", statusText.contains("0 models"))
@@ -201,18 +201,18 @@ class ARStateUIIntegrationTest {
         val placementModeManager = PlacementModeManager(context)
         val childNodes = mutableListOf<io.github.sceneview.node.Node>()
         
-        // 1. 初始化狀態
+        // 1. Initial state
         assertEquals(PlacementMode.PLANE_ONLY, placementModeManager.currentMode.value)
         assertEquals(0, arRenderer.placedModelsCount.value)
         
-        // 2. 模擬AR會話啟動
+        // 2. Simulate AR session startup
         arRenderer.trackingStatus.value = "AR Tracking Active"
         arRenderer.canPlaceObjects.value = true
         
-        // 3. 模擬放置模型
+        // 3. Simulate model placement
         arRenderer.incrementModelCount()
         
-        // 4. 驗證狀態（不測試模式切換，因為需要 session）
+        // 4. Verify state (don't test mode switching because it needs session)
         assertTrue(arRenderer.canPlaceObjects.value)
         assertEquals("AR Tracking Active", arRenderer.trackingStatus.value)
         assertEquals(1, arRenderer.placedModelsCount.value)
@@ -224,7 +224,7 @@ class ARStateUIIntegrationTest {
         val arRenderer = ARSceneViewRenderer()
         val childNodes = mutableListOf<io.github.sceneview.node.Node>()
         
-        // 測試 setMode 而不是 switchToNextMode（setMode 可能有不同的邏輯）
+        // Test setMode instead of switchToNextMode (setMode may have different logic)
         PlacementMode.values().forEach { mode ->
             try {
                 placementModeManager.setMode(
@@ -234,15 +234,15 @@ class ARStateUIIntegrationTest {
                     clearModels = false
                 )
                 
-                // 如果 setMode 成功，驗證模式
+                // If setMode succeeds, verify mode
                 val currentMode = placementModeManager.currentMode.value
-                // 注意：可能仍然不會切換，如果沒有 session
+                // Note: may still not switch if no session
                 
                 val statusText = placementModeManager.getModeStatusText()
                 assertTrue("Status should not be empty", statusText.isNotEmpty())
                 
             } catch (e: Exception) {
-                // 如果設置模式失敗，這是預期的（沒有 session）
+                // If setting mode fails, this is expected (no session)
                 assertTrue("Mode setting without session is expected to maintain current mode", true)
             }
         }
@@ -253,17 +253,17 @@ class ARStateUIIntegrationTest {
         val placementModeManager = PlacementModeManager(context)
         var planeDataCleared = false
         
-        // clearPlaneData 也需要 session 才能工作
+        // clearPlaneData also needs session to work
         try {
             placementModeManager.clearPlaneData {
                 planeDataCleared = true
             }
             
-            // 如果沒有 session，回調可能不會被調用
-            // 這是正確的行為
+            // If no session, callback may not be called
+            // This is correct behavior
             
         } catch (e: Exception) {
-            // 預期可能會有異常，因為沒有 AR session
+            // Expected to possibly have exception because no AR session
             assertTrue("Clear plane data without session is expected to fail", true)
         }
     }
@@ -272,7 +272,7 @@ class ARStateUIIntegrationTest {
     fun testPlacementModeManagerIntegration() {
         val placementModeManager = PlacementModeManager(context)
         
-        // 只測試基本狀態，不測試需要 session 的功能
+        // Only test basic state, don't test functionality that needs session
         assertEquals(PlacementMode.PLANE_ONLY, placementModeManager.currentMode.value)
         
         val statusText = placementModeManager.getModeStatusText()

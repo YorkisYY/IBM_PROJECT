@@ -1,4 +1,4 @@
-// app/src/androidTest/java/integration/ModelDialogIntegrationTest.kt - 最終修復版
+// app/src/androidTest/java/integration/ModelDialogIntegrationTest.kt - Final fix version
 
 package integration
 
@@ -30,7 +30,7 @@ import ar.PlacementModeManager
 import ar.PlacementMode
 
 /**
- * Model-Dialog Integration Test - 基於實際代碼邏輯最終修復
+ * Model-Dialog Integration Test - Final fix based on actual code logic
  */
 @RunWith(AndroidJUnit4::class)
 class ModelDialogIntegrationTest {
@@ -283,13 +283,13 @@ class ModelDialogIntegrationTest {
     fun testPlacementModeTransitions() {
         val childNodes = mutableListOf<io.github.sceneview.node.Node>()
         
-        // 修復：不期望模式會切換，因為沒有 AR session
+        // Fix: Don't expect mode to switch because no AR session
         assertEquals(PlacementMode.PLANE_ONLY, placementModeManager.currentMode.value)
         
-        // 嘗試切換（預期會失敗，因為沒有 session）
+        // Try to switch (expected to fail because no session)
         placementModeManager.switchToNextMode(childNodes, arRenderer)
         
-        // 驗證模式沒有改變（這是正確的行為）
+        // Verify mode didn't change (this is correct behavior)
         val currentMode = placementModeManager.currentMode.value
         assertTrue("Mode should either stay the same or change depending on session availability", 
             currentMode == PlacementMode.PLANE_ONLY || currentMode != PlacementMode.PLANE_ONLY)

@@ -1,4 +1,4 @@
-// app/src/androidTest/java/integration/ContextAIIntegrationTest.kt - 基於實際邏輯修復
+// app/src/androidTest/java/integration/ContextAIIntegrationTest.kt - Fixed based on actual logic
 
 package integration
 
@@ -12,7 +12,7 @@ import watsonx.ContextManager
 import watsonx.WatsonAIEnhanced
 
 /**
- * Context AI Integration Test - 基於實際 hasRelevantContext 邏輯修復
+ * Context AI Integration Test - Fixed based on actual hasRelevantContext logic
  */
 @RunWith(AndroidJUnit4::class)
 class ContextAIIntegrationTest {
@@ -56,24 +56,24 @@ class ContextAIIntegrationTest {
 
     @Test
     fun testContextRelevanceDetectionCorrectly() {
-        // 基於實際的 hasRelevantContext 邏輯：
+        // Based on actual hasRelevantContext logic:
         // keywords.any { keyword -> previousText.contains(keyword) && keyword.length > 2 }
         
         ContextManager.clearConversationHistory()
         ContextManager.addConversation("Tell me about cats", "Cats are wonderful pets...")
         
-        // 測試 "More about cats" -> keywords: ["more", "about", "cats"]
-        // "cats" 長度 > 2 且在歷史 "Tell me about cats" 中存在 ✓
+        // Test "More about cats" -> keywords: ["more", "about", "cats"]
+        // "cats" length > 2 and exists in history "Tell me about cats" ✓
         val hasRelevantContext = ContextManager.hasRelevantContext("More about cats")
         assertTrue("Should find relevant context for cats", hasRelevantContext)
         
-        // 測試 "What time is it" -> keywords: ["what", "time", "is", "it"] 
-        // "time" 長度 > 2 但不在歷史中 ✗
-        // "what" 長度 <= 2 被忽略
+        // Test "What time is it" -> keywords: ["what", "time", "is", "it"] 
+        // "time" length > 2 but not in history ✗
+        // "what" length <= 2 ignored
         val hasIrrelevantContext = ContextManager.hasRelevantContext("What time is it")
         assertFalse("Should not find relevant context for time", hasIrrelevantContext)
         
-        // 測試短關鍵詞
+        // Test short keywords
         val hasShortKeyword = ContextManager.hasRelevantContext("hi")
         assertFalse("Short keywords should be ignored", hasShortKeyword)
     }
@@ -83,22 +83,22 @@ class ContextAIIntegrationTest {
         ContextManager.clearConversationHistory()
         ContextManager.addConversation("I love cooking", "That's wonderful! Cooking is a great hobby.")
         
-        // 修復：基於實際邏輯
+        // Fix: Based on actual logic
         // "cooking recipes" -> ["cooking", "recipes"]
-        // "cooking" 在歷史 "I love cooking" 中存在且長度 > 2 ✓
+        // "cooking" exists in history "I love cooking" and length > 2 ✓
         assertTrue("Should detect cooking context", ContextManager.hasRelevantContext("cooking recipes"))
         
         // "kitchen tips" -> ["kitchen", "tips"] 
-        // "kitchen" 不在歷史中，"tips" 也不在歷史中 ✗
-        // 實際上這個測試應該失敗，因為歷史中沒有 "kitchen"
+        // "kitchen" not in history, "tips" also not in history ✗
+        // Actually this test should fail because "kitchen" is not in history
         assertFalse("Should not detect kitchen context (not in history)", 
             ContextManager.hasRelevantContext("kitchen tips"))
         
-        // 測試確實存在的詞
+        // Test words that actually exist
         assertTrue("Should detect love context", ContextManager.hasRelevantContext("love programming"))
         assertTrue("Should detect great context", ContextManager.hasRelevantContext("great ideas"))
         
-        // 測試不相關的查詢
+        // Test unrelated queries
         assertFalse("Should not detect space context", ContextManager.hasRelevantContext("space exploration"))
         assertFalse("Should not detect math context", ContextManager.hasRelevantContext("mathematics"))
     }
@@ -171,10 +171,10 @@ class ContextAIIntegrationTest {
             testResult.response.contains("service") ||
             testResult.response.isNotEmpty())
         
-        // 修復：檢查實際的服務狀態格式
+        // Fix: Check actual service status format
         val status = WatsonAIEnhanced.getServiceStatus()
         
-        // 基於實際的 getServiceStatus 返回格式檢查
+        // Check based on actual getServiceStatus return format
         assertTrue("Status should contain weather service", 
             status.contains("Weather") || status.contains("weather"))
         assertTrue("Status should contain SMS service", 
@@ -224,7 +224,7 @@ class ContextAIIntegrationTest {
         ContextManager.clearConversationHistory()
         ContextManager.addConversation("I want to learn programming", "Programming is a great skill to learn!")
         
-        // 基於實際邏輯修復
+        // Fixed based on actual logic
         assertTrue("Should detect programming context", 
             ContextManager.hasRelevantContext("programming languages"))
         assertTrue("Should detect learn context", 

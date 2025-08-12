@@ -24,8 +24,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 
 /**
- * Input-AI Integration Test - 測試輸入到AI處理的整合
- * 修復版本：使用直接狀態操作，避免 UI 元素查找問題
+ * Input-AI Integration Test - Test integration from input to AI processing
+ * Fixed version: Use direct state manipulation, avoid UI element lookup issues
  */
 @RunWith(AndroidJUnit4::class)
 class InputAIIntegrationTest {
@@ -48,7 +48,7 @@ class InputAIIntegrationTest {
                 onValueChange = { inputValue = it },
                 onSendClick = {
                     isLoading = true
-                    // 模擬天氣關鍵字檢測和處理
+                    // Simulate weather keyword detection and processing
                     val hasWeatherKeyword = inputValue.contains("weather", ignoreCase = true)
                     if (hasWeatherKeyword) {
                         aiResponse = "Current weather: 25°C, Sunny"
@@ -61,15 +61,15 @@ class InputAIIntegrationTest {
             )
         }
 
-        // 直接設置輸入值
+        // Directly set input value
         inputValue = "What's the weather today?"
         composeTestRule.waitForIdle()
 
-        // 驗證關鍵字檢測生效
+        // Verify keyword detection works
         assertTrue("Should detect weather keyword", 
             inputValue.contains("weather", ignoreCase = true))
 
-        // 手動觸發 onSendClick 邏輯
+        // Manually trigger onSendClick logic
         val hasWeatherKeyword = inputValue.contains("weather", ignoreCase = true)
         if (hasWeatherKeyword) {
             aiResponse = "Current weather: 25°C, Sunny"
@@ -77,7 +77,7 @@ class InputAIIntegrationTest {
         }
         composeTestRule.waitForIdle()
 
-        // 驗證AI回應內容
+        // Verify AI response content
         assertEquals("Current weather: 25°C, Sunny", aiResponse)
         assertTrue("Should show response", showResponse)
     }
@@ -92,7 +92,7 @@ class InputAIIntegrationTest {
                 value = inputValue,
                 onValueChange = { inputValue = it },
                 onSendClick = {
-                    // 模擬SMS關鍵字檢測
+                    // Simulate SMS keyword detection
                     when {
                         inputValue.contains("message", ignoreCase = true) -> {
                             detectedFunction = "read_unread_messages"
@@ -108,15 +108,15 @@ class InputAIIntegrationTest {
             )
         }
 
-        // 測試SMS關鍵字檢測
+        // Test SMS keyword detection
         val testInput = "Do I have any new messages?"
         val expectedFunction = "read_unread_messages"
 
-        // 直接設置輸入值
+        // Directly set input value
         inputValue = testInput
         composeTestRule.waitForIdle()
         
-        // 手動觸發 onSendClick 邏輯
+        // Manually trigger onSendClick logic
         when {
             inputValue.contains("message", ignoreCase = true) -> {
                 detectedFunction = "read_unread_messages"
@@ -130,7 +130,7 @@ class InputAIIntegrationTest {
         }
         composeTestRule.waitForIdle()
         
-        // 驗證正確的功能被檢測到
+        // Verify correct function was detected
         assertEquals("Should detect correct SMS function", expectedFunction, detectedFunction)
     }
 
@@ -145,7 +145,7 @@ class InputAIIntegrationTest {
                 onValueChange = { inputValue = it },
                 onSendClick = {
                     isLoading = true
-                    // 模擬AI處理延遲
+                    // Simulate AI processing delay
                     GlobalScope.launch {
                         delay(500)
                         isLoading = false
@@ -155,15 +155,15 @@ class InputAIIntegrationTest {
             )
         }
 
-        // 設置輸入值
+        // Set input value
         inputValue = "Test message"
         composeTestRule.waitForIdle()
 
-        // 手動觸發載入狀態
+        // Manually trigger loading state
         isLoading = true
         composeTestRule.waitForIdle()
 
-        // 驗證載入狀態
+        // Verify loading state
         assertTrue("Should be in loading state", isLoading)
     }
 
@@ -179,9 +179,9 @@ class InputAIIntegrationTest {
                     value = inputValue,
                     onValueChange = { inputValue = it },
                     onSendClick = {
-                        // 模擬AI處理錯誤
+                        // Simulate AI processing error
                         try {
-                            // 模擬錯誤情況
+                            // Simulate error condition
                             throw Exception("Network connection failed")
                         } catch (e: Exception) {
                             hasError = true
@@ -191,7 +191,7 @@ class InputAIIntegrationTest {
                     isEnabled = !hasError
                 )
                 
-                // 錯誤提示UI
+                // Error prompt UI
                 if (hasError) {
                     Text(
                         text = "Error: $errorMessage",
@@ -204,11 +204,11 @@ class InputAIIntegrationTest {
             }
         }
 
-        // 設置輸入值
+        // Set input value
         inputValue = "Test error case"
         composeTestRule.waitForIdle()
 
-        // 手動觸發錯誤
+        // Manually trigger error
         try {
             throw Exception("Network connection failed")
         } catch (e: Exception) {
@@ -217,11 +217,11 @@ class InputAIIntegrationTest {
         }
         composeTestRule.waitForIdle()
 
-        // 驗證錯誤狀態
+        // Verify error state
         assertTrue("Should have error", hasError)
         assertEquals("Network connection failed", errorMessage)
 
-        // 驗證錯誤UI顯示
+        // Verify error UI display
         composeTestRule.onNodeWithTag("error_message")
             .assertExists()
             .assertTextEquals("Error: Network connection failed")
@@ -239,7 +239,7 @@ class InputAIIntegrationTest {
                     value = inputValue,
                     onValueChange = { 
                         inputValue = it
-                        // 輸入驗證邏輯
+                        // Input validation logic
                         when {
                             it.trim().isEmpty() -> {
                                 canSend = false
@@ -257,13 +257,13 @@ class InputAIIntegrationTest {
                     },
                     onSendClick = {
                         if (canSend) {
-                            // 處理有效輸入
+                            // Process valid input
                         }
                     },
                     isEnabled = canSend
                 )
                 
-                // 驗證訊息顯示
+                // Validation message display
                 if (validationMessage.isNotEmpty()) {
                     Text(
                         text = validationMessage,
@@ -278,9 +278,9 @@ class InputAIIntegrationTest {
 
         composeTestRule.waitForIdle()
 
-        // 1. 測試空輸入
+        // 1. Test empty input
         inputValue = ""
-        // 手動觸發驗證邏輯
+        // Manually trigger validation logic
         when {
             inputValue.trim().isEmpty() -> {
                 canSend = false
@@ -298,9 +298,9 @@ class InputAIIntegrationTest {
         composeTestRule.waitForIdle()
         assertFalse("Should not allow empty input", canSend)
         
-        // 2. 測試有效輸入
+        // 2. Test valid input
         inputValue = "Valid message"
-        // 手動觸發驗證邏輯
+        // Manually trigger validation logic
         when {
             inputValue.trim().isEmpty() -> {
                 canSend = false
@@ -319,9 +319,9 @@ class InputAIIntegrationTest {
         assertTrue("Should allow valid input", canSend)
         assertEquals("", validationMessage)
         
-        // 3. 測試過長輸入
+        // 3. Test too long input
         inputValue = "a".repeat(600)
-        // 手動觸發驗證邏輯
+        // Manually trigger validation logic
         when {
             inputValue.trim().isEmpty() -> {
                 canSend = false
@@ -340,7 +340,7 @@ class InputAIIntegrationTest {
         assertFalse("Should not allow text over 500 characters", canSend)
         assertEquals("Message too long (max 500 characters)", validationMessage)
         
-        // 驗證驗證訊息顯示
+        // Verify validation message display
         composeTestRule.onNodeWithTag("validation_message")
             .assertExists()
             .assertTextEquals("Message too long (max 500 characters)")
@@ -358,7 +358,7 @@ class InputAIIntegrationTest {
                     value = inputValue,
                     onValueChange = { inputValue = it },
                     onSendClick = {
-                        // 模擬不同類型的AI回應
+                        // Simulate different types of AI responses
                         aiResponse = when {
                             inputValue.contains("weather") -> {
                                 showDialog = true
@@ -376,7 +376,7 @@ class InputAIIntegrationTest {
                     }
                 )
                 
-                // AI回應對話框
+                // AI response dialog
                 if (showDialog && aiResponse.isNotEmpty()) {
                     Card(
                         modifier = Modifier
@@ -395,11 +395,11 @@ class InputAIIntegrationTest {
             }
         }
 
-        // 設置輸入值
+        // Set input value
         inputValue = "Hello there"
         composeTestRule.waitForIdle()
         
-        // 手動觸發 onSendClick 邏輯 - 使用實際的條件判斷
+        // Manually trigger onSendClick logic - use actual conditional judgment
         aiResponse = when {
             inputValue.contains("weather") -> {
                 "Today's weather: 22°C, partly cloudy with light winds"
@@ -414,11 +414,11 @@ class InputAIIntegrationTest {
         showDialog = true
         composeTestRule.waitForIdle()
         
-        // 驗證對話框出現
+        // Verify dialog appears
         composeTestRule.onNodeWithTag("ai_response_dialog")
             .assertExists()
         
-        // 驗證回應文字 - 檢查實際應該出現的文字
+        // Verify response text - check actual text that should appear
         composeTestRule.onNodeWithTag("ai_response_text")
             .assertExists()
             .assertTextEquals("Hello! I'm your AR assistant. How can I help you today?")

@@ -17,8 +17,8 @@ import watsonx.FunctionCallManager
 import watsonx.PromptManager
 
 /**
- * Function Service Integration Test - 測試功能服務協調
- * 修復版本：移除 Mockito 依賴，使用真實服務測試
+ * Function Service Integration Test - Test function service coordination
+ * Fixed version: Remove Mockito dependency, use real service testing
  */
 @RunWith(AndroidJUnit4::class)
 class FunctionServiceIntegrationTest {
@@ -32,7 +32,7 @@ class FunctionServiceIntegrationTest {
         functionCallManager = FunctionCallManager
         promptManager = PromptManager()
         
-        // 初始化所有功能服務（使用真實服務進行整合測試）
+        // Initialize all function services (use real services for integration testing)
         WeatherFunctions.initialize(context)
         SMSFunctions.initialize(context)
         NewsFunctions.initialize(context)
@@ -51,11 +51,11 @@ class FunctionServiceIntegrationTest {
         )
 
         weatherQueries.forEach { query ->
-            // 1. 測試關鍵字檢測
+            // 1. Test keyword detection
             val needsFunction = functionCallManager.mightNeedFunctionCall(query)
             assertTrue("Should detect weather function need for: $query", needsFunction)
 
-            // 2. 測試功能類型判斷
+            // 2. Test function type judgment
             val functionName = if (query.contains("London")) {
                 "get_weather_by_city"
             } else {
@@ -65,13 +65,13 @@ class FunctionServiceIntegrationTest {
             val functionType = functionCallManager.getFunctionType(functionName)
             assertEquals("Should identify as weather function", "weather", functionType)
 
-            // 3. 測試路由邏輯（直接創建測試對象）
+            // 3. Test routing logic (directly create test object)
             val functionCall = FunctionCallManager.FunctionCall(
                 name = functionName,
                 arguments = if (query.contains("London")) "{\"city\":\"London\"}" else "{}"
             )
             
-            // 驗證功能調用結構
+            // Verify function call structure
             assertNotNull("Function call should be created", functionCall)
             assertEquals("Function name should match", functionName, functionCall.name)
         }
@@ -96,16 +96,16 @@ class FunctionServiceIntegrationTest {
         )
 
         smsQueries.forEachIndexed { index, query ->
-            // 1. 測試關鍵字檢測
+            // 1. Test keyword detection
             val needsFunction = functionCallManager.mightNeedFunctionCall(query)
             assertTrue("Should detect SMS function need for: $query", needsFunction)
 
-            // 2. 測試功能路由
+            // 2. Test function routing
             val expectedFunction = expectedFunctions[index]
             val functionType = functionCallManager.getFunctionType(expectedFunction)
             assertEquals("Should identify as SMS function", "SMS", functionType)
 
-            // 3. 驗證功能調用參數
+            // 3. Verify function call parameters
             val functionCall = FunctionCallManager.FunctionCall(
                 name = expectedFunction,
                 arguments = if (expectedFunction == "read_recent_messages") "{\"limit\":10}" else "{}"
@@ -127,11 +127,11 @@ class FunctionServiceIntegrationTest {
         )
 
         locationQueries.forEach { query ->
-            // 1. 測試關鍵字檢測
+            // 1. Test keyword detection
             val needsFunction = functionCallManager.mightNeedFunctionCall(query)
             assertTrue("Should detect location function need for: $query", needsFunction)
 
-            // 2. 測試功能類型
+            // 2. Test function type
             val functionName = when {
                 query.contains("where am i", ignoreCase = true) -> "get_current_location"
                 query.contains("current location") -> "get_current_location"
@@ -156,7 +156,7 @@ class FunctionServiceIntegrationTest {
         )
 
         errorScenarios.forEach { (serviceType, functionName) ->
-            // 1. 測試各服務的錯誤處理一致性
+            // 1. Test error handling consistency across services
             try {
                 val result = when (serviceType) {
                     "weather" -> WeatherFunctions.execute(functionName, "{}")
@@ -167,17 +167,17 @@ class FunctionServiceIntegrationTest {
                     else -> "Unknown service"
                 }
                 
-                // 即使出錯，也應該返回有意義的錯誤消息而不是異常
+                // Even if error occurs, should return meaningful error message rather than exception
                 assertNotNull("Should return error message instead of null", result)
                 assertTrue("Error message should not be empty", result.isNotEmpty())
                 
             } catch (e: Exception) {
-                // 如果拋出異常，驗證是否為預期的異常類型
+                // If exception is thrown, verify it's expected exception type
                 assertTrue("Exception should contain service information", 
                     e.message?.contains(serviceType, ignoreCase = true) == true)
             }
 
-            // 2. 測試統一錯誤回應格式
+            // 2. Test uniform error response format
             val fallbackResponse = functionCallManager.generateFallbackResponse(
                 serviceType, 
                 "Error: Service temporarily unavailable"
@@ -190,25 +190,25 @@ class FunctionServiceIntegrationTest {
 
     @Test
     fun testServiceStatusAndHealthChecks() = runTest {
-        // 1. 測試各服務狀態檢查
+        // 1. Test service status checks
         val weatherStatus = WeatherFunctions.getServiceStatus()
         val smsStatus = SMSFunctions.getServiceStatus()
         val newsStatus = NewsFunctions.getServiceStatus()
         val podcastStatus = PodcastFunctions.getServiceStatus()
 
-        // 2. 驗證狀態報告格式一致性
+        // 2. Verify status report format consistency
         listOf(weatherStatus, smsStatus, newsStatus, podcastStatus).forEach { status ->
             assertNotNull("Service status should not be null", status)
             assertTrue("Status should contain service info", status.isNotEmpty())
         }
 
-        // 3. 測試服務測試功能
+        // 3. Test service test functionality
         try {
             val weatherTest = WeatherFunctions.testWeatherService()
             assertNotNull("Weather test should return result", weatherTest)
             assertTrue("Weather test should indicate status", weatherTest.contains("test"))
         } catch (e: Exception) {
-            // 允許測試在無網路環境下失敗，但應該有合理的錯誤信息
+            // Allow test to fail in no-network environment, but should have reasonable error message
             assertTrue("Test failure should have meaningful message", 
                 e.message?.isNotEmpty() == true)
         }
@@ -216,7 +216,7 @@ class FunctionServiceIntegrationTest {
 
     @Test
     fun testFunctionCallManagerIntegration() = runTest {
-        // 1. 測試FunctionCallManager與各服務的整合
+        // 1. Test FunctionCallManager integration with services
         val testCases = mapOf(
             "get_current_weather" to "{}",
             "read_unread_messages" to "{}",
@@ -226,19 +226,19 @@ class FunctionServiceIntegrationTest {
         )
 
         testCases.forEach { (functionName, arguments) ->
-            // 2. 測試功能調用創建
+            // 2. Test function call creation
             val functionCall = FunctionCallManager.FunctionCall(functionName, arguments)
             
             assertNotNull("Function call should be created", functionCall)
             assertEquals("Function name should match", functionName, functionCall.name)
             assertEquals("Arguments should match", arguments, functionCall.arguments)
 
-            // 3. 測試功能類型識別
+            // 3. Test function type identification
             val functionType = functionCallManager.getFunctionType(functionName)
             assertNotNull("Function type should be identified", functionType)
             assertTrue("Function type should not be empty", functionType.isNotEmpty())
 
-            // 4. 測試錯誤回應生成
+            // 4. Test error response generation
             val fallbackResponse = functionCallManager.generateFallbackResponse(
                 functionType, 
                 "Mock successful result"
@@ -252,7 +252,7 @@ class FunctionServiceIntegrationTest {
 
     @Test
     fun testPromptManagerFunctionDetection() = runTest {
-        // 1. 測試PromptManager的關鍵字檢測能力
+        // 1. Test PromptManager keyword detection capability
         val testQueries = mapOf(
             "What's the weather like?" to true,
             "Do I have any messages?" to true,
@@ -269,7 +269,7 @@ class FunctionServiceIntegrationTest {
             assertEquals("Detection should match expected for: $query", shouldDetect, detected)
         }
 
-        // 2. 測試提示生成
+        // 2. Test prompt generation
         val functionalPrompt = promptManager.buildFunctionCallingPrompt(
             "What's the weather?", 
             "No previous context"
