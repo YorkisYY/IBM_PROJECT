@@ -476,7 +476,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // Right control area - simplified buttons
+            // Right control area - buttons without card wrappers
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -484,207 +484,152 @@ class MainActivity : ComponentActivity() {
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
             ) {
-                // Mode toggle button - simplified version
-                Card(
+                // Mode toggle button
+                OutlinedButton(
+                    onClick = {
+                        placementModeManager.switchToNextMode(
+                            childNodes = childNodes,
+                            arRenderer = arRenderer,
+                            onModelsCleared = {
+                                touchHandler.clearAllCats(childNodes, arRenderer)
+                                hasFirstCat = false
+                                firstCatDialogPosition = Offset.Zero
+                                isChatVisible = false
+                                chatMessage = ""
+                            }
+                        )
+                    },
                     modifier = Modifier
                         .width(80.dp)
-                        .wrapContentHeight(),
+                        .height(80.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color.White,
+                        contentColor = Color(currentMode.color)
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    border = BorderStroke(2.dp, Color(currentMode.color)),
+                    contentPadding = PaddingValues(8.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        OutlinedButton(
-                            onClick = {
-                                placementModeManager.switchToNextMode(
-                                    childNodes = childNodes,
-                                    arRenderer = arRenderer,
-                                    onModelsCleared = {
-                                        touchHandler.clearAllCats(childNodes, arRenderer)
-                                        hasFirstCat = false
-                                        firstCatDialogPosition = Offset.Zero
-                                        isChatVisible = false
-                                        chatMessage = ""
-                                    }
-                                )
-                            },
-                            modifier = Modifier.size(64.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = Color(currentMode.color)
-                            ),
-                            border = BorderStroke(2.dp, Color(currentMode.color)),
-                            contentPadding = PaddingValues(4.dp)
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Text(
-                                    text = currentMode.icon,
-                                    fontSize = 20.sp,
-                                    color = Color(currentMode.color)
-                                )
-                                Text(
-                                    text = currentMode.displayName,
-                                    fontSize = 10.sp,
-                                    color = Color(currentMode.color),
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1
-                                )
-                            }
-                        }
+                        Text(
+                            text = currentMode.icon,
+                            fontSize = 20.sp,
+                            color = Color(currentMode.color)
+                        )
+                        Text(
+                            text = currentMode.displayName,
+                            fontSize = 10.sp,
+                            color = Color(currentMode.color),
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
                     }
                 }
                 
                 // Clear plane data button
-                Card(
+                OutlinedButton(
+                    onClick = {
+                        placementModeManager.clearPlaneData {
+                            Log.d(TAG, "Plane data cleared")
+                        }
+                    },
                     modifier = Modifier
                         .width(80.dp)
-                        .wrapContentHeight(),
+                        .height(80.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color.White,
+                        contentColor = MaterialTheme.colorScheme.secondary
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.secondary),
+                    contentPadding = PaddingValues(8.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        OutlinedButton(
-                            onClick = {
-                                placementModeManager.clearPlaneData {
-                                    Log.d(TAG, "Plane data cleared")
-                                }
-                            },
-                            modifier = Modifier.size(64.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.secondary
-                            ),
-                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.secondary),
-                            contentPadding = PaddingValues(4.dp)
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Text(
-                                    text = "Clear",
-                                    fontSize = 16.sp
-                                )
-                                Text(
-                                    text = "Planes",
-                                    fontSize = 10.sp,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1
-                                )
-                            }
-                        }
+                        Text(
+                            text = "Clear",
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                        Text(
+                            text = "Planes",
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.secondary,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
+                        )
                     }
                 }
                 
-                // Settings button - simplified version
-                Card(
+                // Settings button
+                OutlinedButton(
+                    onClick = { showSettings = true },
                     modifier = Modifier
                         .width(80.dp)
-                        .wrapContentHeight(),
+                        .height(80.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color.White,
+                        contentColor = MaterialTheme.colorScheme.secondary
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.secondary),
+                    contentPadding = PaddingValues(8.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Settings",
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+                
+                // Clear Models button
+                if (modelsCount > 0) {
+                    OutlinedButton(
+                        onClick = {
+                            placementModeManager.clearAllModels(childNodes, arRenderer)
+                            hasFirstCat = false
+                            firstCatDialogPosition = Offset.Zero
+                            isChatVisible = false
+                            chatMessage = ""
+                        },
+                        modifier = Modifier
+                            .width(80.dp)
+                            .height(80.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = Color.White,
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        border = BorderStroke(2.dp, MaterialTheme.colorScheme.error),
+                        contentPadding = PaddingValues(8.dp)
                     ) {
-                        OutlinedButton(
-                            onClick = { showSettings = true },
-                            modifier = Modifier.size(64.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.secondary
-                            ),
-                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.secondary),
-                            contentPadding = PaddingValues(4.dp)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Settings",
-                                tint = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(24.dp)
+                            Text(
+                                text = "Clear",
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Text(
+                                text = "Models",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
                             )
                         }
                     }
                 }
-                
-                // Clear Models button - 新增在這裡
-                if (modelsCount > 0) {
-                    Card(
-                        modifier = Modifier
-                            .width(80.dp)
-                            .wrapContentHeight(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
-                        ),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    placementModeManager.clearAllModels(childNodes, arRenderer)
-                                    hasFirstCat = false
-                                    firstCatDialogPosition = Offset.Zero
-                                    isChatVisible = false
-                                    chatMessage = ""
-                                },
-                                modifier = Modifier.size(64.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
-                                ),
-                                border = BorderStroke(2.dp, MaterialTheme.colorScheme.error),
-                                contentPadding = PaddingValues(4.dp)
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    Text(
-                                        text = "Clear",
-                                        fontSize = 16.sp,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                    Text(
-                                        text = "Models",
-                                        fontSize = 10.sp,
-                                        color = MaterialTheme.colorScheme.error,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
             }
-        
+
             // Simplified settings dialog
             if (showSettings) {
                 AlertDialog(
