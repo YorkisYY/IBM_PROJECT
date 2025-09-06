@@ -18,6 +18,10 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import watsonx.FunctionCallManager
 import watsonx.PromptManager
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
+import javax.net.ssl.*
+
 
 /**
  * Enhanced Watson AI Service - with context management and SMS functionality
@@ -28,14 +32,42 @@ object WatsonAIEnhanced {
     
     private val config = WatsonAIConfig(
         baseUrl = "https://eu-gb.ml.cloud.ibm.com",
-        apiKey = "9hZtqy6PhM-zml8zuEAkfUihkHECwQSRVQApdrx7vToz",
-        deploymentId = "331b85e6-8e2c-4af2-81b4-04baaf115dba"
+        apiKey = "nP5c0_UJMcNbYTNM3OInGLqjygVLcH-SMloxyZfxH81U",
+        deploymentId = "8933ca4a-958e-4e41-acf2-5867f589068b"
     )
     
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)  
+        .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+        .connectionSpecs(listOf(
+            ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
+                .tlsVersions(TlsVersion.TLS_1_2, TlsVersion.TLS_1_3)  
+                .cipherSuites(
+                    CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+                    CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+                    CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+                    CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+                )
+                .build(),
+            ConnectionSpec.CLEARTEXT
+        ))
+        .sslSocketFactory(createTrustAllSslContext().socketFactory, createTrustAllManager())
+        .hostnameVerifier { _, _ -> true }
         .build()
+    private fun createTrustAllManager(): X509TrustManager {
+    return object : X509TrustManager {
+        override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
+        override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
+        override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+    }
+}
+
+    private fun createTrustAllSslContext(): SSLContext {
+        val trustManager = createTrustAllManager()
+        val sslContext = SSLContext.getInstance("TLS")
+        sslContext.init(null, arrayOf(trustManager), SecureRandom())
+        return sslContext
+    }
     
     private val json = Json {
         ignoreUnknownKeys = true
@@ -297,6 +329,7 @@ object WatsonAIEnhanced {
         )
         
         Log.d(TAG, "Sending request to Watson AI")
+        Log.d(TAG, "URL: $url")  
         Log.d(TAG, "Prompt length: ${prompt.length}")
         
         val request = Request.Builder()
@@ -308,12 +341,16 @@ object WatsonAIEnhanced {
             .build()
         
         try {
+            Log.d(TAG, "Making HTTP request...")  
             val response = client.newCall(request).execute()
             Log.d(TAG, "Response status: ${response.code}")
+            Log.d(TAG, "Response headers: ${response.headers}")  
             
             if (!response.isSuccessful) {
                 val errorText = response.body?.string() ?: ""
                 Log.e(TAG, "API Error: $errorText")
+                Log.e(TAG, "Response code: ${response.code}")  
+                Log.e(TAG, "Response message: ${response.message}")  
                 throw IOException("Watson AI API Error: ${response.code} - $errorText")
             }
             
@@ -325,6 +362,8 @@ object WatsonAIEnhanced {
             
         } catch (e: Exception) {
             Log.e(TAG, "Watson AI call failed: ${e.message}")
+            Log.e(TAG, "Exception type: ${e::class.java.simpleName}")  
+            Log.e(TAG, "Stack trace: ${e.stackTrace.contentToString()}")  
             throw e
         }
     }
@@ -380,10 +419,16 @@ object WatsonAIEnhanced {
     /**
      * Get IAM Token - reuse your existing logic
      */
+
     private suspend fun getIAMToken(): String = withContext(Dispatchers.IO) {
+        Log.d(TAG, "Checking cached token...")
         if (cachedToken != null && System.currentTimeMillis() < tokenExpirationTime - 300_000) {
+            Log.d(TAG, "Using cached token")
             return@withContext cachedToken!!
         }
+        
+        Log.d(TAG, "Getting new IAM token...")
+        Log.d(TAG, "API Key: ${config.apiKey.take(10)}...")  
         
         val requestBody = FormBody.Builder()
             .add("grant_type", "urn:ibm:params:oauth:grant-type:apikey")
@@ -398,12 +443,18 @@ object WatsonAIEnhanced {
             .build()
         
         try {
+            Log.d(TAG, "Making IAM token request...")
             val response = client.newCall(request).execute()
+            Log.d(TAG, "IAM response status: ${response.code}")
+            
             if (!response.isSuccessful) {
+                val errorBody = response.body?.string() ?: ""
+                Log.e(TAG, "IAM token error: $errorBody")
                 throw IOException("Failed to get IAM token: ${response.code}")
             }
             
             val responseBody = response.body?.string()
+            Log.d(TAG, "IAM token received successfully")
             val tokenResponse = json.decodeFromString<IAMTokenResponse>(responseBody!!)
             
             cachedToken = tokenResponse.accessToken
@@ -412,6 +463,8 @@ object WatsonAIEnhanced {
             return@withContext tokenResponse.accessToken
             
         } catch (e: Exception) {
+            Log.e(TAG, "IAM token failed: ${e.message}")
+            Log.e(TAG, "Exception type: ${e::class.java.simpleName}")
             throw e
         }
     }
