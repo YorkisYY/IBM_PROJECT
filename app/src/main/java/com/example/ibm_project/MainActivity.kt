@@ -407,13 +407,6 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier.fillMaxSize(),
                                     verticalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    //text(
-                                       // text = "${touchHandler.getFirstCatModel()?.name ?: "First Cat"} (${firstCatDialogPosition.x.toInt()}, ${firstCatDialogPosition.y.toInt()})",
-                                        //color = Color.White.copy(alpha = 0.8f),
-                                       // fontSize = 12.sp,
-                                        //fontWeight = FontWeight.Bold
-                                    //)
-                                    
                                     LazyColumn(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -635,92 +628,63 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-            }
-        
-            // Simplified control panel
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    // Header - only show tracking status
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                
+                // Clear Models button - 新增在這裡
+                if (modelsCount > 0) {
+                    Card(
+                        modifier = Modifier
+                            .width(80.dp)
+                            .wrapContentHeight(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
+                        ),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                     ) {
-                        Text(
-                            text = trackingStatus,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = when {
-                                canPlace -> MaterialTheme.colorScheme.primary
-                                trackingStatus.contains("Lost") || trackingStatus.contains("Failed") -> 
-                                    MaterialTheme.colorScheme.error
-                                else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                            }
-                        )
-                    }
-                    
-                    // Status information
-                    Text(
-                        text = planeStatus,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    // Statistics and control - remove icons
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Plane count
-                        Text(
-                            text = "$planesCount Planes",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (canPlace) MaterialTheme.colorScheme.primary 
-                                   else MaterialTheme.colorScheme.secondary
-                        )
-                        
-                        // Model count
-                        Text(
-                            text = "$modelsCount Cats" + if (touchHandler.getFirstCatModel() != null) " (Dialog)" else "",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        
-                        // Clear button
-                        if (modelsCount > 0) {
-                            TextButton(
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            OutlinedButton(
                                 onClick = {
                                     placementModeManager.clearAllModels(childNodes, arRenderer)
                                     hasFirstCat = false
                                     firstCatDialogPosition = Offset.Zero
                                     isChatVisible = false
                                     chatMessage = ""
-                                }
+                                },
+                                modifier = Modifier.size(64.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                ),
+                                border = BorderStroke(2.dp, MaterialTheme.colorScheme.error),
+                                contentPadding = PaddingValues(4.dp)
                             ) {
-                                Text(
-                                    text = "Clear Models", 
-                                    style = MaterialTheme.typography.bodySmall
-                                )
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = "Clear",
+                                        fontSize = 16.sp,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                    Text(
+                                        text = "Models",
+                                        fontSize = 10.sp,
+                                        color = MaterialTheme.colorScheme.error,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
-            
+        
             // Simplified settings dialog
             if (showSettings) {
                 AlertDialog(
@@ -769,7 +733,7 @@ class MainActivity : ComponentActivity() {
                     }
                 )
             }
-            
+
             // Bottom input field
             Column(
                 modifier = Modifier
@@ -808,8 +772,8 @@ class MainActivity : ComponentActivity() {
                     },
                     placeholder = when {
                         touchHandler.getSelectedNode() != null -> "Selected: ${touchHandler.getSelectedNode()?.name} - Rotate with drag..."
-                        modelsCount > 0 -> "Chat with spooky cats! (${currentMode.displayName} mode)"
-                        else -> "Tap anywhere to place cats... (${currentMode.displayName} mode)"
+                        modelsCount > 0 -> "Start your chat !"
+                        else -> "Tap anywhere to place models"
                     },
                     isLoading = isLoading
                 )
