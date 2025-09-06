@@ -407,12 +407,12 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier.fillMaxSize(),
                                     verticalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    Text(
-                                        text = "${touchHandler.getFirstCatModel()?.name ?: "First Cat"} (${firstCatDialogPosition.x.toInt()}, ${firstCatDialogPosition.y.toInt()})",
-                                        color = Color.White.copy(alpha = 0.8f),
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
+                                    //text(
+                                       // text = "${touchHandler.getFirstCatModel()?.name ?: "First Cat"} (${firstCatDialogPosition.x.toInt()}, ${firstCatDialogPosition.y.toInt()})",
+                                        //color = Color.White.copy(alpha = 0.8f),
+                                       // fontSize = 12.sp,
+                                        //fontWeight = FontWeight.Bold
+                                    //)
                                     
                                     LazyColumn(
                                         modifier = Modifier
@@ -421,7 +421,7 @@ class MainActivity : ComponentActivity() {
                                         verticalArrangement = Arrangement.Top
                                     ) {
                                         item {
-                                            Text(
+                                            Text( 
                                                 text = chatMessage,
                                                 color = Color.White,
                                                 fontSize = 16.sp,
@@ -835,7 +835,7 @@ class MainActivity : ComponentActivity() {
                     if (result.success && result.response.isNotEmpty()) {
                         result.response
                     } else {
-                        "Meow~ Watson dialog is bound to the first cat! Mode: ${placementModeManager.currentMode.value.displayName}"
+                        "There is problem of dialog creation, please repoen the app and start the conversation sometimes it takes several times to reactive watsonx.ai, or you can email to my creator York! (yyisyork@gmail.com)"
                     }
                 }
             }

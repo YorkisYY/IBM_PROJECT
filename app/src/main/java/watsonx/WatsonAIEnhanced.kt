@@ -188,6 +188,7 @@ object WatsonAIEnhanced {
             Log.d(TAG, "Function parameters: ${functionCall.arguments}")
             
             // Call corresponding service based on function type
+            // Call corresponding service based on function type
             val functionResult = when {
                 correctedName.startsWith("get_") && correctedName.contains("weather") -> {
                     WeatherFunctions.execute(correctedName, functionCall.arguments)
@@ -203,7 +204,20 @@ object WatsonAIEnhanced {
                 ) -> {
                     LocationFunctions.execute(correctedName, functionCall.arguments)
                 }
-                // Other function checks also use correctedName
+                correctedName in listOf(
+                    "get_podcasts_by_category", "get_recommended_podcasts", "search_podcasts",
+                    "get_health_podcasts", "get_history_podcasts", "get_education_podcasts",
+                    "get_news_podcasts", "get_business_podcasts", "get_science_podcasts",
+                    "get_technology_podcasts"
+                ) -> {
+                    PodcastFunctions.execute(correctedName, functionCall.arguments)
+                }
+                correctedName in listOf(
+                    "get_recommended_news", "get_latest_news", "search_news", 
+                    "get_news_summary", "get_news_by_category"
+                ) -> {
+                    NewsFunctions.execute(correctedName, functionCall.arguments)
+                }
                 else -> {
                     Log.w(TAG, "Unknown function type: $correctedName")
                     "Sorry, unrecognized function request."
