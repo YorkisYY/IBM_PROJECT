@@ -40,26 +40,26 @@ class AuthRepository(private val context: Context) {
     }
     
     init {
-        // 監聽認證狀態變化
+        // Listen to auth state changes
         auth.addAuthStateListener { firebaseAuth ->
             val user = firebaseAuth.currentUser
             _currentUser.value = user
             _authState.value = if (user != null) AuthState.Authenticated else AuthState.Unauthenticated
         }
         
-        // 初始狀態檢查
+        // Initial state check
         _authState.value = if (auth.currentUser != null) AuthState.Authenticated else AuthState.Unauthenticated
     }
     
     /**
-     * 獲取 Google 登入 Intent
+     * Get Google Sign-In Intent
      */
     fun getGoogleSignInIntent(): Intent {
         return googleSignInClient.signInIntent
     }
     
     /**
-     * 處理 Google 登入結果
+     * Handle Google Sign-In result
      */
     suspend fun handleGoogleSignInResult(data: Intent?): AuthResult {
         return try {
@@ -73,21 +73,21 @@ class AuthRepository(private val context: Context) {
                 val result = auth.signInWithCredential(credential).await()
                 val user = result.user!!
                 
-                // 保存用戶資料到 Firestore
+                // Save user data to Firestore
                 saveUserToFirestore(user)
                 
-                Log.d(TAG, "Google 登入成功: ${user.email}")
+                Log.d(TAG, "Google sign-in successful: ${user.email}")
                 AuthResult.Success(user)
             } else {
-                Log.e(TAG, "Google 登入失敗: 沒有 ID Token")
-                AuthResult.Error("登入失敗：沒有獲得認證資訊")
+                Log.e(TAG, "Google sign-in failed: No ID Token")
+                AuthResult.Error("Sign-in failed: No authentication credentials received")
             }
         } catch (e: ApiException) {
-            Log.e(TAG, "Google 登入失敗: ${e.message}")
-            AuthResult.Error("登入失敗：${e.message}")
+            Log.e(TAG, "Google sign-in failed: ${e.message}")
+            AuthResult.Error("Sign-in failed: ${e.message}")
         } catch (e: Exception) {
-            Log.e(TAG, "登入過程出錯: ${e.message}")
-            AuthResult.Error("登入失敗：${e.message}")
+            Log.e(TAG, "Sign-in error: ${e.message}")
+            AuthResult.Error("Sign-in failed: ${e.message}")
         } finally {
             if (_authState.value == AuthState.Loading) {
                 _authState.value = AuthState.Unauthenticated
@@ -96,7 +96,7 @@ class AuthRepository(private val context: Context) {
     }
     
     /**
-     * 匿名登入
+     * Anonymous sign-in
      */
     suspend fun signInAnonymously(): AuthResult {
         return try {
@@ -105,30 +105,30 @@ class AuthRepository(private val context: Context) {
             val result = auth.signInAnonymously().await()
             val user = result.user!!
             
-            Log.d(TAG, "匿名登入成功: ${user.uid}")
+            Log.d(TAG, "Anonymous sign-in successful: ${user.uid}")
             AuthResult.Success(user)
         } catch (e: Exception) {
-            Log.e(TAG, "匿名登入失敗: ${e.message}")
+            Log.e(TAG, "Anonymous sign-in failed: ${e.message}")
             _authState.value = AuthState.Unauthenticated
-            AuthResult.Error("匿名登入失敗：${e.message}")
+            AuthResult.Error("Anonymous sign-in failed: ${e.message}")
         }
     }
     
     /**
-     * 登出
+     * Sign out
      */
     fun signOut() {
         try {
             auth.signOut()
             googleSignInClient.signOut()
-            Log.d(TAG, "用戶已登出")
+            Log.d(TAG, "User signed out")
         } catch (e: Exception) {
-            Log.e(TAG, "登出失敗: ${e.message}")
+            Log.e(TAG, "Sign out failed: ${e.message}")
         }
     }
     
     /**
-     * 保存用戶資料到 Firestore
+     * Save user data to Firestore
      */
     private suspend fun saveUserToFirestore(user: FirebaseUser) {
         try {
@@ -146,22 +146,22 @@ class AuthRepository(private val context: Context) {
                 .set(userData)
                 .await()
                 
-            Log.d(TAG, "用戶資料已保存到 Firestore")
+            Log.d(TAG, "User data saved to Firestore")
         } catch (e: Exception) {
-            Log.e(TAG, "保存用戶資料失敗: ${e.message}")
-            // 不拋出異常，因為登入已經成功，只是資料保存失敗
+            Log.e(TAG, "Failed to save user data: ${e.message}")
+            // Don't throw exception as sign-in was successful, only data saving failed
         }
     }
     
     /**
-     * 檢查是否已登入
+     * Check if user is signed in
      */
     fun isSignedIn(): Boolean {
         return auth.currentUser != null
     }
     
     /**
-     * 獲取當前用戶
+     * Get current user
      */
     fun getCurrentUser(): FirebaseUser? {
         return auth.currentUser
@@ -169,7 +169,7 @@ class AuthRepository(private val context: Context) {
 }
 
 /**
- * 認證狀態
+ * Authentication state
  */
 sealed class AuthState {
     object Loading : AuthState()
@@ -178,7 +178,7 @@ sealed class AuthState {
 }
 
 /**
- * 認證結果
+ * Authentication result
  */
 sealed class AuthResult {
     data class Success(val user: FirebaseUser) : AuthResult()

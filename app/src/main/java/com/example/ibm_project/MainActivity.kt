@@ -66,7 +66,7 @@ import io.github.sceneview.node.Node
 import io.github.sceneview.ar.ARScene
 import io.github.sceneview.ar.rememberARCameraNode
 import io.github.sceneview.ar.rememberARCameraStream
-
+import com.example.ibm_project.chat.ChatRepository
 /**
  * AR Cat Interaction App - with Firebase Auth
  */
@@ -77,13 +77,15 @@ class MainActivity : ComponentActivity() {
     }
     
     // AR components
+    private lateinit var authRepository: AuthRepository
+    private lateinit var chatRepository: ChatRepository
     private lateinit var arRenderer: ARSceneViewRenderer
     private lateinit var touchHandler: ARTouchHandler
     private lateinit var dialogTracker: ARDialogTracker
     private lateinit var placementModeManager: PlacementModeManager
     
-    // Auth repository
-    private lateinit var authRepository: AuthRepository
+
+    
     
     // Permission launcher
     private val permissionLauncher = registerForActivityResult(
@@ -95,7 +97,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate started")
-        
+        chatRepository = ChatRepository()
         // Initialize Auth repository
         authRepository = AuthRepository(this)
         
@@ -253,7 +255,18 @@ class MainActivity : ComponentActivity() {
                 delay(16) // ~60 FPS
             }
         }
-        
+        // Listen for authentication changes
+        LaunchedEffect(authRepository.authState.collectAsState().value) {
+            chatRepository.onAuthenticationChanged()
+        }
+        LaunchedEffect(Unit) {
+            try {
+                chatRepository.loadChatHistory()
+                Log.d(TAG, "Chat history loaded")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load chat history: ${e.message}")
+            }
+        }
         // First cat screen coordinate tracking logic
         LaunchedEffect(touchHandler.getFirstCatModel(), frame) {
             touchHandler.getFirstCatModel()?.let { cat ->
@@ -800,36 +813,78 @@ class MainActivity : ComponentActivity() {
         }
     }
     
-    private suspend fun processUserMessage(message: String): String {
-        return try {
-            when (message.lowercase()) {
-                "help" -> {
-                    "Tap screen to place cats in AR!\n" +
-                    "Tap any cat then drag for smooth 360 degree rotation\n" +
-                    "Use right panel to switch placement modes\n" +
-                    "Watson dialog follows first cat with smart positioning\n" +
-                    "Use 'clear' to remove all cats and reset"
+private suspend fun processUserMessage(message: String): String {
+    return try {
+        when (message.lowercase()) {
+            "help" -> {
+                "Tap screen to place cats in AR!\n" +
+                "Tap any cat then drag for smooth 360 degree rotation\n" +
+                "Use right panel to switch placement modes\n" +
+                "Watson dialog follows first cat with smart positioning\n" +
+                "Use 'clear' to remove all cats and reset\n" +
+                "Type 'history' to clear chat history\n" +
+                "Type 'stats' to see chat statistics"
+            }
+            "clear" -> {
+                "All cats cleared! Place a new first cat for dialog binding! Current mode: ${placementModeManager.currentMode.value.displayName}"
+            }
+            "history" -> {
+                chatRepository.clearChatHistory()
+                val storageType = if (authRepository.getCurrentUser()?.isAnonymous == false) "Firebase" else "local memory"
+                "Chat history cleared from $storageType! Starting fresh conversation."
+            }
+            "stats" -> {
+                val stats = chatRepository.getChatStats()
+                val storageLocation = if (authRepository.getCurrentUser()?.isAnonymous == false) {
+                    "stored in Firebase (visible to admin)"
+                } else {
+                    "stored locally (private, temporary)"
                 }
-                "clear" -> {
-                    "All cats cleared! Place a new first cat for dialog binding! Current mode: ${placementModeManager.currentMode.value.displayName}"
-                }
-                else -> {
-                    val result = WatsonAIEnhanced.getEnhancedAIResponse(message)
-                    if (result.success && result.response.isNotEmpty()) {
-                        result.response
-                    } else {
-                        "There is problem of dialog creation, please repoen the app and start the conversation sometimes it takes several times to reactive watsonx.ai, or you can email to my creator York! (yyisyork@gmail.com)"
-                    }
+                
+                "Chat Stats:\n" +
+                "• Messages: ${stats.totalMessages}\n" +
+                "• Storage: ${stats.storageType}\n" +
+                "• Location: $storageLocation\n" +
+                if (stats.firstMessageTime > 0) {
+                    "• First message: ${java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(stats.firstMessageTime))}"
+                } else {
+                    "• This is your first message!"
                 }
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "AI processing exception", e)
-            "Meow... Connection problem"
+            else -> {
+                // Get conversation context for AI
+                val conversationContext = chatRepository.getConversationContext()
+                
+                // Prepare enhanced prompt with context
+                val enhancedMessage = if (conversationContext.isNotEmpty()) {
+                    "Previous conversation:\n$conversationContext\n\nCurrent message: $message"
+                } else {
+                    message
+                }
+                
+                val result = WatsonAIEnhanced.getEnhancedAIResponse(enhancedMessage)
+                val aiResponse = if (result.success && result.response.isNotEmpty()) {
+                    result.response
+                } else {
+                    "There is problem of dialog creation, please reopen the app and start the conversation sometimes it takes several times to reactive watsonx.ai, or you can email to my creator York! (yyisyork@gmail.com)"
+                }
+                
+                // Save conversation (Firebase for Google users, local memory for anonymous)
+                try {
+                    chatRepository.saveChatMessage(message, aiResponse)
+                    val storageType = if (authRepository.getCurrentUser()?.isAnonymous == false) "Firebase" else "local"
+                    Log.d(TAG, "Chat message saved to $storageType storage")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to save chat message: ${e.message}")
+                    // Don't affect user experience if saving fails
+                }
+                
+                aiResponse
+            }
         }
+    } catch (e: Exception) {
+        Log.e(TAG, "AI processing exception", e)
+        "Meow... Connection problem"
     }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        Log.d(TAG, "Application ended")
-    }
+}
 }

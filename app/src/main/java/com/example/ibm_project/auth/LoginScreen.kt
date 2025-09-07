@@ -66,15 +66,7 @@ fun LoginScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF2196F3),
-                        Color(0xFF1976D2),
-                        Color(0xFF0D47A1)
-                    )
-                )
-            )
+            .background(Color.White)
     ) {
         Column(
             modifier = Modifier
@@ -133,43 +125,20 @@ private fun AppLogoSection() {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Card(
-            modifier = Modifier.size(120.dp),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White.copy(alpha = 0.2f)
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "AR Cat Assistant",
-                    modifier = Modifier.size(64.dp),
-                    tint = Color.White
-                )
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
         Text(
-            text = "AR Cat Assistant",
-            fontSize = 28.sp,
+            text = "AI Weather Art",
+            fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
+            color = Color(0xFF2196F3),
             textAlign = TextAlign.Center
         )
         
         Spacer(modifier = Modifier.height(8.dp))
         
         Text(
-            text = "Start conversation with your AI cat assistant",
+            text = "Start conversation with your AR assistant",
             fontSize = 16.sp,
-            color = Color.White.copy(alpha = 0.8f),
+            color = Color.Gray,
             textAlign = TextAlign.Center
         )
     }
@@ -189,8 +158,8 @@ private fun LoginButtonsSection(
             text = "Sign in with Google",
             onClick = onGoogleSignIn,
             enabled = !isLoading,
-            backgroundColor = Color.White,
-            textColor = Color(0xFF1976D2),
+            backgroundColor = Color(0xFF2196F3),
+            textColor = Color.White,
             leadingIcon = null
         )
         
@@ -200,16 +169,16 @@ private fun LoginButtonsSection(
         ) {
             Divider(
                 modifier = Modifier.weight(1f),
-                color = Color.White.copy(alpha = 0.5f)
+                color = Color.Gray.copy(alpha = 0.5f)
             )
             Text(
                 text = "  or  ",
-                color = Color.White.copy(alpha = 0.7f),
+                color = Color.Gray,
                 fontSize = 14.sp
             )
             Divider(
                 modifier = Modifier.weight(1f),
-                color = Color.White.copy(alpha = 0.5f)
+                color = Color.Gray.copy(alpha = 0.5f)
             )
         }
         
@@ -218,7 +187,7 @@ private fun LoginButtonsSection(
             onClick = onAnonymousSignIn,
             enabled = !isLoading,
             backgroundColor = Color.Transparent,
-            textColor = Color.White,
+            textColor = Color(0xFF2196F3),
             leadingIcon = Icons.Default.Person,
             isOutlined = true
         )
@@ -251,7 +220,7 @@ private fun LoginButton(
             contentColor = textColor
         ),
         border = if (isOutlined) {
-            androidx.compose.foundation.BorderStroke(2.dp, Color.White.copy(alpha = 0.5f))
+            androidx.compose.foundation.BorderStroke(2.dp, Color(0xFF2196F3))
         } else null,
         elevation = ButtonDefaults.buttonElevation(
             defaultElevation = if (isOutlined) 0.dp else 4.dp
