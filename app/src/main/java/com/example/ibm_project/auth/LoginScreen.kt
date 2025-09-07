@@ -22,7 +22,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -36,7 +35,6 @@ fun LoginScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
-    // Google 登入 Launcher
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -57,7 +55,6 @@ fun LoginScreen(
         }
     }
     
-    // 監聽認證狀態
     val authState by authRepository.authState.collectAsState()
     
     LaunchedEffect(authState) {
@@ -86,12 +83,10 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // App Logo 區域
             AppLogoSection()
             
             Spacer(modifier = Modifier.height(48.dp))
             
-            // 登入按鈕區域
             LoginButtonsSection(
                 isLoading = isLoading,
                 onGoogleSignIn = {
@@ -119,7 +114,6 @@ fun LoginScreen(
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            // 錯誤訊息
             errorMessage?.let { message ->
                 ErrorMessageCard(
                     message = message,
@@ -128,7 +122,6 @@ fun LoginScreen(
             }
         }
         
-        // 載入覆蓋層
         if (isLoading) {
             LoadingOverlay()
         }
@@ -140,7 +133,6 @@ private fun AppLogoSection() {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // App Icon/Logo
         Card(
             modifier = Modifier.size(120.dp),
             shape = RoundedCornerShape(24.dp),
@@ -153,7 +145,6 @@ private fun AppLogoSection() {
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                // 您可以在這裡放置 app icon
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = "AR Cat Assistant",
@@ -165,7 +156,6 @@ private fun AppLogoSection() {
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        // App 名稱
         Text(
             text = "AR Cat Assistant",
             fontSize = 28.sp,
@@ -177,7 +167,7 @@ private fun AppLogoSection() {
         Spacer(modifier = Modifier.height(8.dp))
         
         Text(
-            text = "與您的 AI 貓咪助手開始對話",
+            text = "Start conversation with your AI cat assistant",
             fontSize = 16.sp,
             color = Color.White.copy(alpha = 0.8f),
             textAlign = TextAlign.Center
@@ -195,17 +185,15 @@ private fun LoginButtonsSection(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Google 登入按鈕
         LoginButton(
-            text = "使用 Google 登入",
+            text = "Sign in with Google",
             onClick = onGoogleSignIn,
             enabled = !isLoading,
             backgroundColor = Color.White,
             textColor = Color(0xFF1976D2),
-            leadingIcon = null // 您可以添加 Google icon
+            leadingIcon = null
         )
         
-        // 或者分隔線
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -215,7 +203,7 @@ private fun LoginButtonsSection(
                 color = Color.White.copy(alpha = 0.5f)
             )
             Text(
-                text = "  或者  ",
+                text = "  or  ",
                 color = Color.White.copy(alpha = 0.7f),
                 fontSize = 14.sp
             )
@@ -225,9 +213,8 @@ private fun LoginButtonsSection(
             )
         }
         
-        // 匿名登入按鈕
         LoginButton(
-            text = "以訪客身分繼續",
+            text = "Continue as Guest",
             onClick = onAnonymousSignIn,
             enabled = !isLoading,
             backgroundColor = Color.Transparent,
@@ -319,7 +306,7 @@ private fun ErrorMessageCard(
             
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "關閉",
+                    text = "Close",
                     color = Color(0xFFD32F2F)
                 )
             }

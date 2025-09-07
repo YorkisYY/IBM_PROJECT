@@ -35,6 +35,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.ibm_project.ui.theme.IBM_PROJECTTheme
+import com.example.ibm_project.auth.AuthRepository
+import com.example.ibm_project.auth.AuthState
+import com.example.ibm_project.auth.LoginScreen
 import com.google.ar.core.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -65,8 +68,7 @@ import io.github.sceneview.ar.rememberARCameraNode
 import io.github.sceneview.ar.rememberARCameraStream
 
 /**
- * AR Cat Interaction App - Simplified UI design
- * Includes mode switching and plane data clearing functionality
+ * AR Cat Interaction App - with Firebase Auth
  */
 class MainActivity : ComponentActivity() {
 
@@ -80,6 +82,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var dialogTracker: ARDialogTracker
     private lateinit var placementModeManager: PlacementModeManager
     
+    // Auth repository
+    private lateinit var authRepository: AuthRepository
+    
     // Permission launcher
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -91,6 +96,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate started")
         
+        // Initialize Auth repository
+        authRepository = AuthRepository(this)
+        
         // Initialize AR components
         arRenderer = ARSceneViewRenderer()
         touchHandler = ARTouchHandler()
@@ -100,13 +108,30 @@ class MainActivity : ComponentActivity() {
         // Integrate components
         placementModeManager.setARTouchHandler(touchHandler)
         
-        // Request necessary permissions
-        requestNecessaryPermissions()
-        
         // Setup Compose UI
         setContent {
             IBM_PROJECTTheme {
-                ARInterface()
+                // Check auth state and show appropriate screen
+                val authState by authRepository.authState.collectAsState()
+                
+                when (authState) {
+                    is AuthState.Authenticated -> {
+                        // User is logged in, show AR interface
+                        LaunchedEffect(Unit) {
+                            requestNecessaryPermissions()
+                        }
+                        ARInterface()
+                    }
+                    else -> {
+                        // User not logged in, show login screen
+                        LoginScreen(
+                            authRepository = authRepository,
+                            onLoginSuccess = {
+                                // Will automatically switch to AR when auth state changes
+                            }
+                        )
+                    }
+                }
             }
         }
     }
@@ -181,6 +206,7 @@ class MainActivity : ComponentActivity() {
         var chatMessage by remember { mutableStateOf("") }
         var isChatVisible by remember { mutableStateOf(false) }
         var showSettings by remember { mutableStateOf(false) }
+        var showLogoutDialog by remember { mutableStateOf(false) }
         
         // Dialog binding to first cat position
         var firstCatDialogPosition by remember { mutableStateOf(Offset.Zero) }
@@ -628,6 +654,28 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+                
+                // Logout button
+                OutlinedButton(
+                    onClick = { showLogoutDialog = true },
+                    modifier = Modifier
+                        .width(80.dp)
+                        .height(80.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color.White,
+                        contentColor = Color.Red
+                    ),
+                    border = BorderStroke(2.dp, Color.Red),
+                    contentPadding = PaddingValues(8.dp)
+                ) {
+                    Text(
+                        text = "Logout",
+                        fontSize = 14.sp,
+                        color = Color.Red,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
 
             // Simplified settings dialog
@@ -679,6 +727,32 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
+            // Logout confirmation dialog
+            if (showLogoutDialog) {
+                AlertDialog(
+                    onDismissRequest = { showLogoutDialog = false },
+                    title = { Text("Logout") },
+                    text = { Text("Are you sure you want to logout?") },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                authRepository.signOut()
+                                showLogoutDialog = false
+                            }
+                        ) {
+                            Text("Yes")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(
+                            onClick = { showLogoutDialog = false }
+                        ) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
+
             // Bottom input field
             Column(
                 modifier = Modifier
@@ -716,7 +790,7 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     placeholder = when {
-                        touchHandler.getSelectedNode() != null -> "Selected: ${touchHandler.getSelectedNode()?.name} - Rotate with drag..."
+                        touchHandler.getSelectedNode() != null -> "Rotate with drag..."
                         modelsCount > 0 -> "Start your chat !"
                         else -> "Tap anywhere to place models"
                     },

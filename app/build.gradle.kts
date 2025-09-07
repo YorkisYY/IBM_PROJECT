@@ -168,4 +168,20 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")  // BOM manages version
     debugImplementation("androidx.compose.ui:ui-test-manifest")     
     debugImplementation("androidx.compose.ui:ui-tooling")          
+        // ===== Add these Firebase dependencies at the end =====
+    
+    // Firebase BOM (version management)
+    implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+    
+    // Firebase Auth
+    implementation("com.google.firebase:firebase-auth")
+    
+    // Firebase Firestore (database)
+    implementation("com.google.firebase:firebase-firestore")
+    
+    // Google Play Services Auth (Google Sign-In)
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
+    
+    // Coroutines Tasks (Firebase coroutine support)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
 }
