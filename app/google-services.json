@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "60668137869",
+    "project_id": "ai-weather-art-8c070",
+    "storage_bucket": "ai-weather-art-8c070.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:60668137869:android:f247dcfcbcc6e99648edc4",
+        "android_client_info": {
+          "package_name": "com.example.ibm_project"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "60668137869-l5qeoccm995at2565i1p6j4qe5v4tfb1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.ibm_project",
+            "certificate_hash": "e45d1fd9dbb20bf05264b41e3c870151e7a6a412"
+          }
+        },
+        {
+          "client_id": "60668137869-mpodhia3c89b9va5mp84dvu6tgb6c54o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0dHeGIEohXY0j_pgHsHBqzN5dkdgfDKU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "60668137869-mpodhia3c89b9va5mp84dvu6tgb6c54o.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
