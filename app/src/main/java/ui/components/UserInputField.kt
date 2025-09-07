@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,6 +17,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ibm_project.ui.SpeechToTextButton
 
 /**
  * User input field component (reusable)
@@ -87,6 +90,30 @@ fun UserInputField(
             
             Spacer(modifier = Modifier.width(12.dp))
             
+            // Mic button
+            FloatingActionButton(
+                onClick = { },
+                modifier = Modifier.size(56.dp),
+                containerColor = Color(0xFF4CAF50),
+                contentColor = Color.White
+            ) {
+                SpeechToTextButton(
+                    onResult = { speechResult ->
+                        if (speechResult.isNotEmpty()) {
+                            // Append speech result to existing text
+                            val newText = if (value.isNotEmpty()) {
+                                "$value $speechResult"
+                            } else {
+                                speechResult
+                            }
+                            onValueChange(newText)
+                        }
+                    }
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
             // Send button
             FloatingActionButton(
                 onClick = {
@@ -110,10 +137,10 @@ fun UserInputField(
                         color = Color.White
                     )
                 } else {
-                    Text(
-                        text = sendButtonText,
-                        fontSize = 20.sp,
-                        textAlign = TextAlign.Center
+                    Icon(
+                        imageVector = Icons.Default.Send,
+                        contentDescription = "Send",
+                        tint = Color.White
                     )
                 }
             }

@@ -8,15 +8,12 @@ import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,7 +25,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -38,6 +34,9 @@ import com.example.ibm_project.ui.theme.IBM_PROJECTTheme
 import com.example.ibm_project.auth.AuthRepository
 import com.example.ibm_project.auth.AuthState
 import com.example.ibm_project.auth.LoginScreen
+import com.example.ibm_project.ui.ARControlButtons
+import com.example.ibm_project.ui.SettingsDialog
+import com.example.ibm_project.ui.LogoutDialog
 import com.google.ar.core.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -67,6 +66,7 @@ import io.github.sceneview.ar.ARScene
 import io.github.sceneview.ar.rememberARCameraNode
 import io.github.sceneview.ar.rememberARCameraStream
 import com.example.ibm_project.chat.ChatRepository
+
 /**
  * AR Cat Interaction App - with Firebase Auth
  */
@@ -84,9 +84,6 @@ class MainActivity : ComponentActivity() {
     private lateinit var dialogTracker: ARDialogTracker
     private lateinit var placementModeManager: PlacementModeManager
     
-
-    
-    
     // Permission launcher
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -97,9 +94,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate started")
-        chatRepository = ChatRepository()
-        // Initialize Auth repository
+        
+        // Initialize repositories
         authRepository = AuthRepository(this)
+        chatRepository = ChatRepository()
         
         // Initialize AR components
         arRenderer = ARSceneViewRenderer()
@@ -248,17 +246,12 @@ class MainActivity : ComponentActivity() {
             }
         }
         
-        // Smooth rotation update loop
-        LaunchedEffect(touchHandler.getSelectedNode()) {
-            while (touchHandler.getSelectedNode() != null) {
-                touchHandler.updateSmoothRotation()
-                delay(16) // ~60 FPS
-            }
-        }
         // Listen for authentication changes
         LaunchedEffect(authRepository.authState.collectAsState().value) {
             chatRepository.onAuthenticationChanged()
         }
+        
+        // Load chat history
         LaunchedEffect(Unit) {
             try {
                 chatRepository.loadChatHistory()
@@ -267,6 +260,15 @@ class MainActivity : ComponentActivity() {
                 Log.e(TAG, "Failed to load chat history: ${e.message}")
             }
         }
+        
+        // Smooth rotation update loop
+        LaunchedEffect(touchHandler.getSelectedNode()) {
+            while (touchHandler.getSelectedNode() != null) {
+                touchHandler.updateSmoothRotation()
+                delay(16) // ~60 FPS
+            }
+        }
+        
         // First cat screen coordinate tracking logic
         LaunchedEffect(touchHandler.getFirstCatModel(), frame) {
             touchHandler.getFirstCatModel()?.let { cat ->
@@ -515,256 +517,58 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // Right control area - buttons without card wrappers
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(end = 16.dp, top = 120.dp),
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
-            ) {
-                // Mode toggle button
-                OutlinedButton(
-                    onClick = {
-                        placementModeManager.switchToNextMode(
-                            childNodes = childNodes,
-                            arRenderer = arRenderer,
-                            onModelsCleared = {
-                                touchHandler.clearAllCats(childNodes, arRenderer)
-                                hasFirstCat = false
-                                firstCatDialogPosition = Offset.Zero
-                                isChatVisible = false
-                                chatMessage = ""
-                            }
-                        )
-                    },
-                    modifier = Modifier
-                        .width(80.dp)
-                        .height(80.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.White,
-                        contentColor = Color(currentMode.color)
-                    ),
-                    border = BorderStroke(2.dp, Color(currentMode.color)),
-                    contentPadding = PaddingValues(8.dp)
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = currentMode.icon,
-                            fontSize = 20.sp,
-                            color = Color(currentMode.color)
-                        )
-                        Text(
-                            text = currentMode.displayName,
-                            fontSize = 10.sp,
-                            color = Color(currentMode.color),
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1
-                        )
-                    }
-                }
-                
-                // Clear plane data button
-                OutlinedButton(
-                    onClick = {
-                        placementModeManager.clearPlaneData {
-                            Log.d(TAG, "Plane data cleared")
-                        }
-                    },
-                    modifier = Modifier
-                        .width(80.dp)
-                        .height(80.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.White,
-                        contentColor = MaterialTheme.colorScheme.secondary
-                    ),
-                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.secondary),
-                    contentPadding = PaddingValues(8.dp)
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "Clear",
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                        Text(
-                            text = "Planes",
-                            fontSize = 10.sp,
-                            color = MaterialTheme.colorScheme.secondary,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1
-                        )
-                    }
-                }
-                
-                // Settings button
-                OutlinedButton(
-                    onClick = { showSettings = true },
-                    modifier = Modifier
-                        .width(80.dp)
-                        .height(80.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.White,
-                        contentColor = MaterialTheme.colorScheme.secondary
-                    ),
-                    border = BorderStroke(2.dp, MaterialTheme.colorScheme.secondary),
-                    contentPadding = PaddingValues(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-                
-                // Clear Models button
-                if (modelsCount > 0) {
-                    OutlinedButton(
-                        onClick = {
-                            placementModeManager.clearAllModels(childNodes, arRenderer)
+            // Right control area - using extracted component
+            ARControlButtons(
+                currentMode = currentMode,
+                modelsCount = modelsCount,
+                onModeToggle = {
+                    placementModeManager.switchToNextMode(
+                        childNodes = childNodes,
+                        arRenderer = arRenderer,
+                        onModelsCleared = {
+                            touchHandler.clearAllCats(childNodes, arRenderer)
                             hasFirstCat = false
                             firstCatDialogPosition = Offset.Zero
                             isChatVisible = false
                             chatMessage = ""
-                        },
-                        modifier = Modifier
-                            .width(80.dp)
-                            .height(80.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = Color.White,
-                            contentColor = MaterialTheme.colorScheme.error
-                        ),
-                        border = BorderStroke(2.dp, MaterialTheme.colorScheme.error),
-                        contentPadding = PaddingValues(8.dp)
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                text = "Clear",
-                                fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            Text(
-                                text = "Models",
-                                fontSize = 10.sp,
-                                color = MaterialTheme.colorScheme.error,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1
-                            )
                         }
-                    }
-                }
-                
-                // Logout button
-                OutlinedButton(
-                    onClick = { showLogoutDialog = true },
-                    modifier = Modifier
-                        .width(80.dp)
-                        .height(80.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.White,
-                        contentColor = Color.Red
-                    ),
-                    border = BorderStroke(2.dp, Color.Red),
-                    contentPadding = PaddingValues(8.dp)
-                ) {
-                    Text(
-                        text = "Logout",
-                        fontSize = 14.sp,
-                        color = Color.Red,
-                        fontWeight = FontWeight.Bold
                     )
-                }
-            }
-
-            // Simplified settings dialog
-            if (showSettings) {
-                AlertDialog(
-                    onDismissRequest = { showSettings = false },
-                    title = { Text("Rotation Settings") },
-                    text = {
-                        Column {
-                            Text("Adjust rotation sensitivity:")
-                            
-                            Spacer(modifier = Modifier.height(16.dp))
-                            
-                            // Y-axis sensitivity slider
-                            Text("Horizontal: ${String.format("%.2f", touchHandler.rotationSensitivityY)}")
-                            Slider(
-                                value = touchHandler.rotationSensitivityY,
-                                onValueChange = { touchHandler.rotationSensitivityY = it },
-                                valueRange = 0.1f..2.0f,
-                                steps = 18
-                            )
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            // X-axis sensitivity slider  
-                            Text("Vertical: ${String.format("%.2f", touchHandler.rotationSensitivityX)}")
-                            Slider(
-                                value = touchHandler.rotationSensitivityX,
-                                onValueChange = { touchHandler.rotationSensitivityX = it },
-                                valueRange = 0.1f..2.0f,
-                                steps = 18
-                            )
-                        }
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showSettings = false }) {
-                            Text("Done")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(
-                            onClick = { 
-                                touchHandler.resetSensitivityToDefault()
-                            }
-                        ) {
-                            Text("Reset")
-                        }
+                },
+                onClearPlanes = {
+                    placementModeManager.clearPlaneData {
+                        Log.d(TAG, "Plane data cleared")
                     }
-                )
-            }
+                },
+                onSettings = { showSettings = true },
+                onClearModels = {
+                    placementModeManager.clearAllModels(childNodes, arRenderer)
+                    hasFirstCat = false
+                    firstCatDialogPosition = Offset.Zero
+                    isChatVisible = false
+                    chatMessage = ""
+                },
+                onLogout = { showLogoutDialog = true },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(end = 16.dp, top = 120.dp)
+            )
 
-            // Logout confirmation dialog
-            if (showLogoutDialog) {
-                AlertDialog(
-                    onDismissRequest = { showLogoutDialog = false },
-                    title = { Text("Logout") },
-                    text = { Text("Are you sure you want to logout?") },
-                    confirmButton = {
-                        TextButton(
-                            onClick = {
-                                authRepository.signOut()
-                                showLogoutDialog = false
-                            }
-                        ) {
-                            Text("Yes")
-                        }
-                    },
-                    dismissButton = {
-                        TextButton(
-                            onClick = { showLogoutDialog = false }
-                        ) {
-                            Text("Cancel")
-                        }
-                    }
-                )
-            }
+            // Settings dialog - using extracted component
+            SettingsDialog(
+                showSettings = showSettings,
+                touchHandler = touchHandler,
+                onDismiss = { showSettings = false }
+            )
+
+            // Logout dialog - using extracted component
+            LogoutDialog(
+                showLogoutDialog = showLogoutDialog,
+                onConfirm = {
+                    authRepository.signOut()
+                    showLogoutDialog = false
+                },
+                onDismiss = { showLogoutDialog = false }
+            )
 
             // Bottom input field
             Column(
@@ -813,78 +617,83 @@ class MainActivity : ComponentActivity() {
         }
     }
     
-private suspend fun processUserMessage(message: String): String {
-    return try {
-        when (message.lowercase()) {
-            "help" -> {
-                "Tap screen to place cats in AR!\n" +
-                "Tap any cat then drag for smooth 360 degree rotation\n" +
-                "Use right panel to switch placement modes\n" +
-                "Watson dialog follows first cat with smart positioning\n" +
-                "Use 'clear' to remove all cats and reset\n" +
-                "Type 'history' to clear chat history\n" +
-                "Type 'stats' to see chat statistics"
-            }
-            "clear" -> {
-                "All cats cleared! Place a new first cat for dialog binding! Current mode: ${placementModeManager.currentMode.value.displayName}"
-            }
-            "history" -> {
-                chatRepository.clearChatHistory()
-                val storageType = if (authRepository.getCurrentUser()?.isAnonymous == false) "Firebase" else "local memory"
-                "Chat history cleared from $storageType! Starting fresh conversation."
-            }
-            "stats" -> {
-                val stats = chatRepository.getChatStats()
-                val storageLocation = if (authRepository.getCurrentUser()?.isAnonymous == false) {
-                    "stored in Firebase (visible to admin)"
-                } else {
-                    "stored locally (private, temporary)"
+    private suspend fun processUserMessage(message: String): String {
+        return try {
+            when (message.lowercase()) {
+                "help" -> {
+                    "Tap screen to place cats in AR!\n" +
+                    "Tap any cat then drag for smooth 360 degree rotation\n" +
+                    "Use right panel to switch placement modes\n" +
+                    "Watson dialog follows first cat with smart positioning\n" +
+                    "Use 'clear' to remove all cats and reset\n" +
+                    "Type 'history' to clear chat history\n" +
+                    "Type 'stats' to see chat statistics"
                 }
-                
-                "Chat Stats:\n" +
-                "• Messages: ${stats.totalMessages}\n" +
-                "• Storage: ${stats.storageType}\n" +
-                "• Location: $storageLocation\n" +
-                if (stats.firstMessageTime > 0) {
-                    "• First message: ${java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(stats.firstMessageTime))}"
-                } else {
-                    "• This is your first message!"
+                "clear" -> {
+                    "All cats cleared! Place a new first cat for dialog binding! Current mode: ${placementModeManager.currentMode.value.displayName}"
+                }
+                "history" -> {
+                    chatRepository.clearChatHistory()
+                    val storageType = if (authRepository.getCurrentUser()?.isAnonymous == false) "Firebase" else "local memory"
+                    "Chat history cleared from $storageType! Starting fresh conversation."
+                }
+                "stats" -> {
+                    val stats = chatRepository.getChatStats()
+                    val storageLocation = if (authRepository.getCurrentUser()?.isAnonymous == false) {
+                        "stored in Firebase (visible to admin)"
+                    } else {
+                        "stored locally (private, temporary)"
+                    }
+                    
+                    "Chat Stats:\n" +
+                    "• Messages: ${stats.totalMessages}\n" +
+                    "• Storage: ${stats.storageType}\n" +
+                    "• Location: $storageLocation\n" +
+                    if (stats.firstMessageTime > 0) {
+                        "• First message: ${java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(stats.firstMessageTime))}"
+                    } else {
+                        "• This is your first message!"
+                    }
+                }
+                else -> {
+                    // Get conversation context for AI
+                    val conversationContext = chatRepository.getConversationContext()
+                    
+                    // Prepare enhanced prompt with context
+                    val enhancedMessage = if (conversationContext.isNotEmpty()) {
+                        "Previous conversation:\n$conversationContext\n\nCurrent message: $message"
+                    } else {
+                        message
+                    }
+                    
+                    val result = WatsonAIEnhanced.getEnhancedAIResponse(enhancedMessage)
+                    val aiResponse = if (result.success && result.response.isNotEmpty()) {
+                        result.response
+                    } else {
+                        "There is problem of dialog creation, please reopen the app and start the conversation sometimes it takes several times to reactive watsonx.ai, or you can email to my creator York! (yyisyork@gmail.com)"
+                    }
+                    
+                    // Save conversation (Firebase for Google users, local memory for anonymous)
+                    try {
+                        chatRepository.saveChatMessage(message, aiResponse)
+                        val storageType = if (authRepository.getCurrentUser()?.isAnonymous == false) "Firebase" else "local"
+                        Log.d(TAG, "Chat message saved to $storageType storage")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to save chat message: ${e.message}")
+                        // Don't affect user experience if saving fails
+                    }
+                    
+                    aiResponse
                 }
             }
-            else -> {
-                // Get conversation context for AI
-                val conversationContext = chatRepository.getConversationContext()
-                
-                // Prepare enhanced prompt with context
-                val enhancedMessage = if (conversationContext.isNotEmpty()) {
-                    "Previous conversation:\n$conversationContext\n\nCurrent message: $message"
-                } else {
-                    message
-                }
-                
-                val result = WatsonAIEnhanced.getEnhancedAIResponse(enhancedMessage)
-                val aiResponse = if (result.success && result.response.isNotEmpty()) {
-                    result.response
-                } else {
-                    "There is problem of dialog creation, please reopen the app and start the conversation sometimes it takes several times to reactive watsonx.ai, or you can email to my creator York! (yyisyork@gmail.com)"
-                }
-                
-                // Save conversation (Firebase for Google users, local memory for anonymous)
-                try {
-                    chatRepository.saveChatMessage(message, aiResponse)
-                    val storageType = if (authRepository.getCurrentUser()?.isAnonymous == false) "Firebase" else "local"
-                    Log.d(TAG, "Chat message saved to $storageType storage")
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to save chat message: ${e.message}")
-                    // Don't affect user experience if saving fails
-                }
-                
-                aiResponse
-            }
+        } catch (e: Exception) {
+            Log.e(TAG, "AI processing exception", e)
+            "Meow... Connection problem"
         }
-    } catch (e: Exception) {
-        Log.e(TAG, "AI processing exception", e)
-        "Meow... Connection problem"
     }
-}
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d(TAG, "Application ended")
+    }
 }
