@@ -14,6 +14,10 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import com.example.ibm_project.R
 
 class AuthRepository(private val context: Context) {
@@ -21,6 +25,8 @@ class AuthRepository(private val context: Context) {
     companion object {
         private const val TAG = "AuthRepository"
     }
+    
+    private val repositoryScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
@@ -40,14 +46,12 @@ class AuthRepository(private val context: Context) {
     }
     
     init {
-        // Listen to auth state changes
         auth.addAuthStateListener { firebaseAuth ->
             val user = firebaseAuth.currentUser
             _currentUser.value = user
             _authState.value = if (user != null) AuthState.Authenticated else AuthState.Unauthenticated
         }
         
-        // Initial state check
         _authState.value = if (auth.currentUser != null) AuthState.Authenticated else AuthState.Unauthenticated
     }
     
@@ -73,8 +77,9 @@ class AuthRepository(private val context: Context) {
                 val result = auth.signInWithCredential(credential).await()
                 val user = result.user!!
                 
-                // Save user data to Firestore
-                saveUserToFirestore(user)
+                repositoryScope.launch {
+                    saveUserToFirestore(user)
+                }
                 
                 Log.d(TAG, "Google sign-in successful: ${user.email}")
                 AuthResult.Success(user)
@@ -149,7 +154,6 @@ class AuthRepository(private val context: Context) {
             Log.d(TAG, "User data saved to Firestore")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save user data: ${e.message}")
-            // Don't throw exception as sign-in was successful, only data saving failed
         }
     }
     

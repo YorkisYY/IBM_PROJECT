@@ -10,99 +10,239 @@ class PromptManager {
     
     private val TAG = "PromptManager"
     
+    // 追蹤最近呼叫的 function
+    private var lastFunctionCalled: String? = null
+    private var lastFunctionTime: Long = 0L
+    private val FUNCTION_COOLDOWN = 30000L // 30秒冷卻
+    
     /**
-     * Build function calling prompt
+     * 更精確的 function call 檢測
+     */
+    fun mightNeedFunctionCall(message: String): Boolean {
+        val lowerMessage = message.lowercase()
+        
+        // 更嚴格的檢測邏輯
+        val needsWeather = checkWeatherIntent(lowerMessage)
+        val needsSMS = checkSMSIntent(lowerMessage)
+        val needsLocation = checkLocationIntent(lowerMessage)
+        val needsPodcast = checkPodcastIntent(lowerMessage)
+        val needsNews = checkNewsIntent(lowerMessage)
+        
+        Log.d(TAG, "Precise detection - W:$needsWeather S:$needsSMS L:$needsLocation P:$needsPodcast N:$needsNews")
+        
+        return needsWeather || needsSMS || needsLocation || needsPodcast || needsNews
+    }
+    
+    private fun checkWeatherIntent(message: String): Boolean {
+        // 必須明確詢問天氣
+        val weatherPhrases = listOf(
+            "weather", "temperature", "rain", "sunny", 
+            "forecast", "how hot", "how cold"
+        )
+        val hasWeatherWord = weatherPhrases.any { message.contains(it) }
+        
+        // 排除否定句
+        val isNegative = message.contains("don't") || message.contains("not")
+        
+        return hasWeatherWord && !isNegative
+    }
+    
+    private fun checkSMSIntent(message: String): Boolean {
+        // 必須明確要求讀取訊息
+        val smsPhrases = listOf(
+            "read message", "read my message", "full message",
+            "what's the message", "unread message", "new message",
+            "latest message", "show message", "check message"
+        )
+        return smsPhrases.any { message.contains(it) }
+    }
+    
+    private fun checkLocationIntent(message: String): Boolean {
+        val locationPhrases = listOf(
+            "where am i", "my location", "current location",
+            "where do i live", "my address", "my position"
+        )
+        return locationPhrases.any { message.contains(it) }
+    }
+    
+    private fun checkPodcastIntent(message: String): Boolean {
+        return message.contains("podcast") || 
+               message.contains("listen to something")
+    }
+    
+    private fun checkNewsIntent(message: String): Boolean {
+        return message.contains("news") || 
+               message.contains("headline") || 
+               message.contains("current events")
+    }
+    
+    /**
+     * Build function calling prompt - 配合 ChatRepository 的上下文
      */
     fun buildFunctionCallingPrompt(userMessage: String, contextStr: String): String {
-    return """
-You are an AI assistant with function calling capabilities. When users request specific functions, you must call the corresponding functions.
-Weather Functions:
-- get_current_weather() ← NO parameters = current location weather
-- get_current_weather(city) ← WITH city parameter = that specific city's weather
-- get_weather_by_city(city) ← alternative for specific city weather
+        // 分析用戶真正需要什麼
+        val requiredFunction = identifyRequiredFunction(userMessage)
+        
+        return """
+$contextStr
 
-WEATHER EXAMPLES - YOU MUST FOLLOW THESE PATTERNS:
-Input: "weather" → Output: {"name": "get_current_weather", "arguments": {}}
-Input: "weather in Paris" → Output: {"name": "get_current_weather", "arguments": {"city": "Paris"}}
-Input: "New York weather" → Output: {"name": "get_current_weather", "arguments": {"city": "New York"}}
-Input: "how about Seoul" → Output: {"name": "get_current_weather", "arguments": {"city": "Seoul"}}
-Input: "what about Tokyo" → Output: {"name": "get_current_weather", "arguments": {"city": "Tokyo"}}
+=== FUNCTION CALLING MODE ===
+CRITICAL: Based on the CURRENT USER QUESTION above, you need to call: $requiredFunction
 
-Mandatory calling rules:
-1. User asks about SMS/messages → immediately call read_unread_messages
-2. User asks about weather → immediately call get_current_weather (uses GPS/IP + wttr.in for location)
-3. User asks about location/where they are → immediately call get_current_location (uses same location method as weather)
-4. User asks about news without specific category → call get_recommended_news
-5. User asks about specific news category → call get_news_by_category
-6. User asks about podcasts without specific category → call get_recommended_podcasts
-7. User asks about specific podcast category → call get_podcasts_by_category
-8. Don't say "I cannot" or "I would call", ACTUALLY call functions directly
+STRICT RULES:
+1. ONLY call the function that directly answers the current question
+2. DO NOT call multiple functions unless explicitly asked
+3. DO NOT call functions not related to the current question
+4. If the question doesn't need a function, answer directly
 
-Available functions:
-SMS Functions:
-- read_unread_messages() ← SMS-related questions must call this
-- read_recent_messages(limit) ← recent messages
-- get_message_summary() ← message summary
-- get_latest_message() ← latest message
-
-Weather Functions:
-- get_current_weather() ← current weather (automatically detects location via GPS/IP + wttr.in API)
-- get_weather_by_city(city) ← weather for specific city
-
-Location Functions (uses same location detection as weather):
-- get_current_location() ← when user asks "where am I" or "my location" (GPS/IP + wttr.in geocoding)
-- get_user_location() ← where user is living/current position (same method as weather location)
-- get_location_info() ← detailed location information (includes area type, detection method)
-
-News Functions:
-- get_recommended_news() ← when user asks "what news" or "news recommendations"
-- get_latest_news(limit) ← latest breaking news
-- get_news_by_category(category, limit) ← news by category (health, business, technology, science, sports, general)
-- search_news(query, limit) ← search news by keyword
-- get_health_news() ← health news
-- get_business_news() ← business news
-- get_technology_news() ← technology news
-- get_science_news() ← science news
-
-Podcast Functions:
-- get_recommended_podcasts() ← when user asks "what podcasts" or "podcast recommendations"
-- get_podcasts_by_category(category, limit) ← podcasts by category (health_fitness, history, education, news, etc.)
-- search_podcasts(query, limit) ← search podcasts by keyword
-- get_health_podcasts() ← health podcasts
-- get_history_podcasts() ← history podcasts
-- get_education_podcasts() ← education podcasts
-- get_news_podcasts() ← news podcasts
+${getTargetedFunctionDescription(requiredFunction)}
 
 Function call format: FUNCTION_CALL: {"name": "function_name", "arguments": {}}
 
-Judgment logic:
-User says "I want to know news" or "what news" → call get_recommended_news()
-User says "I want to know podcasts" or "what podcasts" → call get_recommended_podcasts()
-User says "where am I" or "my location" or "where do I live" → call get_current_location()
-User says "weather" or "how is weather" → call get_current_weather()
-User says "health news" → call get_health_news()
-User says "history podcasts" → call get_history_podcasts()
-
-Important: Both weather and location functions use the same location detection method (GPS/IP + wttr.in API) for consistency.
-
-$contextStr
-
-Now processing user request: $userMessage
-
-You MUST call the appropriate function. Do not explain what you would do - just call the function.
+IMPORTANT: Only call $requiredFunction or answer directly if no function is needed.
 """.trimIndent()
-}
+    }
     
     /**
-     * Build normal conversation prompt
+     * 識別需要的 function
+     */
+    private fun identifyRequiredFunction(message: String): String {
+        val lower = message.lowercase()
+        
+        return when {
+            checkWeatherIntent(lower) -> "weather function"
+            checkSMSIntent(lower) -> "message function"
+            checkLocationIntent(lower) -> "location function"
+            checkPodcastIntent(lower) -> "podcast function"
+            checkNewsIntent(lower) -> "news function"
+            else -> "NO FUNCTION (answer directly)"
+        }
+    }
+    
+    /**
+     * 只提供相關的 function 描述
+     */
+    private fun getTargetedFunctionDescription(requiredFunction: String): String {
+        return when (requiredFunction) {
+            "weather function" -> """
+Available Weather Functions:
+- get_current_weather() ← current location weather
+- get_current_weather(city) ← specific city weather
+
+Examples:
+"weather" → {"name": "get_current_weather", "arguments": {}}
+"weather in Paris" → {"name": "get_current_weather", "arguments": {"city": "Paris"}}
+            """.trimIndent()
+            
+            "message function" -> """
+Available SMS Functions:
+- get_latest_message() ← latest message
+- read_unread_messages() ← unread messages
+- get_message_summary() ← message summary
+            """.trimIndent()
+            
+            "location function" -> """
+Available Location Functions:
+- get_current_location() ← current location
+            """.trimIndent()
+            
+            "podcast function" -> """
+Available Podcast Functions:
+- get_recommended_podcasts() ← podcast recommendations
+- get_podcasts_by_category(category) ← specific category
+            """.trimIndent()
+            
+            "news function" -> """
+Available News Functions:
+- get_recommended_news() ← news recommendations
+- get_news_by_category(category) ← specific category
+            """.trimIndent()
+            
+            else -> "No function needed. Answer the question directly."
+        }
+    }
+    
+    /**
+     * Build normal conversation prompt -
      */
     fun buildNormalPrompt(userMessage: String, contextStr: String): String {
         return """
-You are a friendly AR pet assistant, specifically designed to help elderly people. Please respond with a warm, caring tone and keep the conversation natural and smooth.
 $contextStr
-User: $userMessage
-Assistant:
+
+You are a friendly AR pet assistant for elderly people.
+Respond warmly and naturally to the current user question.
+Do not mention functions or technical details.
 """.trimIndent()
+    }
+    
+    /**
+     * Generate final response prompt
+     */
+    fun buildFinalResponsePrompt(originalMessage: String, functionResult: String, functionName: String): String {
+        val functionType = extractFunctionType(functionName)
+        
+        
+        val shouldBeMinimal = checkIfRecentlyCalled(functionName)
+        
+        return """
+User asked: $originalMessage
+Function called: $functionName
+Result: $functionResult
+
+Generate a natural response following these rules:
+1. Answer the user's question using the function result
+2. Keep response warm and friendly for elderly users
+3. Preserve all location details (e.g., "Camden Town, London" not just "London")
+${if (shouldBeMinimal) "4. Do NOT suggest other services - user just asked about this" else ""}
+${getResponseGuideline(functionType, originalMessage)}
+
+Response:
+""".trimIndent()
+    }
+    
+    private fun extractFunctionType(functionName: String): String {
+        return when {
+            functionName.contains("weather") -> "weather"
+            functionName.contains("message") || functionName.contains("sms") -> "message"
+            functionName.contains("location") -> "location"
+            functionName.contains("podcast") -> "podcast"
+            functionName.contains("news") -> "news"
+            else -> "general"
+        }
+    }
+    
+    private fun getResponseGuideline(type: String, originalMessage: String): String {
+        val lower = originalMessage.lowercase()
+        
+        
+        if (lower.contains("just") || lower.contains("only")) {
+            return "\nIMPORTANT: User wants ONLY this information. Do NOT suggest other services."
+        }
+        
+        return when (type) {
+            "message" -> "\nFocus on the message content. Only suggest weather if it seems relevant."
+            "weather" -> "\nFocus on weather information. Keep it concise."
+            "location" -> "\nBe specific about the location. Include district/area names."
+            else -> ""
+        }
+    }
+    
+    private fun checkIfRecentlyCalled(functionName: String): Boolean {
+        if (lastFunctionCalled == null) return false
+        
+        val timeSince = System.currentTimeMillis() - lastFunctionTime
+        val sameType = extractFunctionType(functionName) == extractFunctionType(lastFunctionCalled!!)
+        
+        return sameType && timeSince < FUNCTION_COOLDOWN
+    }
+    
+    /**
+     * 記錄 function 呼叫
+     */
+    fun recordFunctionCall(functionName: String) {
+        lastFunctionCalled = functionName
+        lastFunctionTime = System.currentTimeMillis()
+        Log.d(TAG, "Recorded function call: $functionName")
     }
     
     /**
@@ -113,136 +253,18 @@ Assistant:
     }
     
     /**
-     * Enhanced version: Generate final user-friendly response prompt - preserve detailed area information
-     */
-    fun buildFinalResponsePrompt(originalMessage: String, functionResult: String, functionName: String): String {
-        val functionType = when {
-            functionName.contains("weather") -> "weather"
-            functionName.contains("message") || functionName.contains("sms") -> "SMS"
-            functionName.contains("location") -> "location"
-            functionName.contains("news") -> "news"
-            functionName.contains("podcast") -> "podcast"
-            else -> "function"
-        }
-        
-        return """
-User asked: $originalMessage
-
-The ${functionType} information I obtained is:
-$functionResult
-
-Please provide a natural, friendly, and detailed response based on this information.
-
-CRITICAL REQUIREMENTS:
-1. PRESERVE ALL LOCATION DETAILS: If the data shows specific areas like "Camden Town, London" or "Westminster, London", you MUST mention the FULL area name including the specific district/neighborhood. DO NOT simplify "Camden Town, London" to just "London".
-
-2. LOCATION ACCURACY: When mentioning location information:
-   - Keep the exact area/district name as provided (e.g., "Camden Town", "Westminster", "Greenwich")
-   - Include both the specific area AND the city (e.g., "Camden Town in London")
-   - Do not generalize or simplify location details
-
-3. Use a warm and caring tone suitable for elderly people
-
-4. Don't mention technical terms like "function", "API", or "system"
-
-5. Response guidelines by type:
-   - Weather: Care for the user like a friend AND include the specific area where they are
-   - Location: Tell them their exact area/district, not just the city
-   - SMS: Help understand content and provide suggestions
-   - News: Summarize key points in easy-to-understand way
-   - Podcast: Recommend suitable content and explain why interesting
-
-6. Keep the response natural and smooth
-
-EXAMPLES of correct location responses:
-Wrong: "You're in London, United Kingdom"
-Correct: "You're in Camden Town, London, United Kingdom"
-Correct: "You're currently in the lovely area of Westminster in London"
-
-Answer:
-""".trimIndent()
-    }
-    
-    /**
-     * Enhanced version: Generate fallback response - preserve detailed area information
+     * Generate fallback response 
      */
     fun generateFallbackResponse(functionResult: String, functionName: String): String {
-        val functionType = when {
-            functionName.contains("weather") -> "weather"
-            functionName.contains("message") || functionName.contains("sms") -> "SMS"
-            functionName.contains("location") -> "location"
-            functionName.contains("news") -> "news"
-            functionName.contains("podcast") -> "podcast"
-            else -> "function"
-        }
+        val functionType = extractFunctionType(functionName)
         
         return when (functionType) {
-            "weather" -> "Based on the weather information obtained:\n\n$functionResult\n\nHope this information helps! Remember to adjust your clothing according to the weather. Stay warm and take care!"
-            "SMS" -> "Based on your SMS information:\n\n$functionResult\n\nIf you need me to read a specific message for you, please let me know."
-            "location" -> "Based on your location information:\n\n$functionResult\n\nYou are safe and I hope this helps you know exactly where you are!"
-            "news" -> "Based on the latest news information:\n\n$functionResult\n\nStay informed and take care of yourself!"
-            "podcast" -> "Based on the podcast recommendations:\n\n$functionResult\n\nEnjoy listening to these shows! Let me know if you'd like more recommendations."
-            else -> "Based on the information obtained:\n\n$functionResult\n\nHope this information helps!"
+            "weather" -> "Here's the weather information:\n$functionResult\n\nTake care!"
+            "message" -> "Your message:\n$functionResult"
+            "location" -> "Your location:\n$functionResult"
+            "news" -> "Latest news:\n$functionResult"
+            "podcast" -> "Podcast recommendations:\n$functionResult"
+            else -> "$functionResult"
         }
-    }
-    
-    /**
-     * Check if function call is needed - keyword detection logic
-     */
-    fun mightNeedFunctionCall(message: String): Boolean {
-        val weatherKeywords = listOf(
-            "weather", "temperature", "rain", "sunny", "cloudy",
-            "wind", "humidity", "forecast", "degree", "cold", "hot", "warm"
-        )
-        
-        val smsKeywords = listOf(
-            "sms", "message", "msg", "unread", "new message", "recent", "summary",
-            "read message", "message content", "who sent", "received"
-        )
-        
-        val locationKeywords = listOf(
-            "where am i", "my location", "where do i live", "my address", 
-            "current location", "where i am", "my town", "my city",
-            "where am i living", "where am i living in", // Add "in"
-            "what's my location", "my current position",
-            "where i live", "where i live in", // Add "in"
-            "my place", "location"
-        )
-        
-        val newsKeywords = listOf(
-            "news", "headline", "article", "current events", "breaking news",
-            "latest news", "today news", "business news", "health news",
-            "technology news", "science news", "sports news"
-        )
-        
-        val podcastKeywords = listOf(
-            "podcast", "podcasts", "audio show", "listen to", "episode",
-            "podcast recommendation", "health podcast", "history podcast",
-            "education podcast", "news podcast", "show recommendation"
-        )
-        
-        val hasWeatherKeyword = weatherKeywords.any { keyword ->
-            message.contains(keyword, ignoreCase = true)
-        }
-        
-        val hasSMSKeyword = smsKeywords.any { keyword ->
-            message.contains(keyword, ignoreCase = true)
-        }
-        
-        val hasLocationKeyword = locationKeywords.any { keyword ->
-            message.contains(keyword, ignoreCase = true)
-        }
-        
-        val hasNewsKeyword = newsKeywords.any { keyword ->
-            message.contains(keyword, ignoreCase = true)
-        }
-        
-        val hasPodcastKeyword = podcastKeywords.any { keyword ->
-            message.contains(keyword, ignoreCase = true)
-        }
-        
-        Log.d(TAG, "Keyword detection - Weather: $hasWeatherKeyword, SMS: $hasSMSKeyword, Location: $hasLocationKeyword, News: $hasNewsKeyword, Podcast: $hasPodcastKeyword")
-        
-        return hasWeatherKeyword || hasSMSKeyword || hasLocationKeyword || hasNewsKeyword || hasPodcastKeyword
     }
 }

@@ -239,7 +239,16 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(Unit) {
             try {
                 Log.d(TAG, "Starting initialization...")
-                WatsonAIEnhanced.initialize(context as MainActivity)
+                
+                val currentUser = authRepository.getCurrentUser()
+                if (currentUser != null && !currentUser.isAnonymous) {
+                    WatsonAIEnhanced.initialize(context as MainActivity, chatRepository)
+                    Log.d(TAG, "Initialized with ChatRepository for authenticated user")
+                } else {
+                    WatsonAIEnhanced.initialize(context as MainActivity, null)
+                    Log.d(TAG, "Initialized with ContextManager for anonymous user")
+                }
+                
                 Log.d(TAG, "Initialization completed")
             } catch (e: Exception) {
                 Log.e(TAG, "Initialization failed: ${e.message}", e)

@@ -29,7 +29,7 @@ import javax.net.ssl.*
 object WatsonAIEnhanced {
     
     private const val TAG = "WatsonAIEnhanced"
-    
+    private var chatRepository: com.example.ibm_project.chat.ChatRepository? = null
     private val config = WatsonAIConfig(
         baseUrl = "https://eu-gb.ml.cloud.ibm.com",
         apiKey = "nP5c0_UJMcNbYTNM3OInGLqjygVLcH-SMloxyZfxH81U",
@@ -80,12 +80,13 @@ object WatsonAIEnhanced {
     // Create PromptManager instance
     private val promptManager = PromptManager()
     
-    fun initialize(context: Context) {
+    fun initialize(context: Context, repository: com.example.ibm_project.chat.ChatRepository? = null) {
         WeatherFunctions.initialize(context)
         SMSFunctions.initialize(context)
         NewsFunctions.initialize(context)
         PodcastFunctions.initialize(context)
         LocationFunctions.initialize(context)
+        chatRepository = repository
         Log.d(TAG, "WatsonAI Enhanced service initialized (supports weather + SMS + news + podcast + context)")
     }
     
@@ -104,13 +105,32 @@ object WatsonAIEnhanced {
                 )
             }
             
-            // Add user message to history using ContextManager
-            ContextManager.addToHistory(userMessage, "user")
+            val response: String
             
-            val response = processWithFunctionCalling(userMessage.trim())
-            
-            // Add assistant response to history using ContextManager
-            ContextManager.addToHistory(response, "assistant")
+            if (chatRepository != null) {
+                chatRepository!!.loadChatHistory()
+                val smartContext = chatRepository!!.getSmartConversationContext(userMessage, true)
+                
+                response = if (promptManager.mightNeedFunctionCall(userMessage)) {
+                    val functionPrompt = promptManager.buildFunctionCallingPrompt(userMessage, smartContext)
+                    val aiResponse = callWatsonAI(functionPrompt)
+                    
+                    if (promptManager.containsFunctionCall(aiResponse)) {
+                        executeFunctionAndGenerateResponse(aiResponse, userMessage)
+                    } else {
+                        aiResponse
+                    }
+                } else {
+                    callWatsonAI(smartContext)
+                }
+                
+                chatRepository!!.saveChatMessage(userMessage, response)
+                
+            } else {
+                ContextManager.addToHistory(userMessage, "user")
+                response = processWithFunctionCalling(userMessage.trim())
+                ContextManager.addToHistory(response, "assistant")
+            }
             
             Log.d(TAG, "Enhanced AI response processing completed")
             AIResult(
