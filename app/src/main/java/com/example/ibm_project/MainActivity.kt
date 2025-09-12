@@ -609,7 +609,7 @@ class MainActivity : ComponentActivity() {
                     placeholder = when {
                         touchHandler.getSelectedNode() != null -> "Rotate with drag..."
                         modelsCount > 0 -> "Start your chat !"
-                        else -> "Tap anywhere to place models"
+                        else -> "Tap to place models"
                     },
                     isLoading = isLoading
                 )
