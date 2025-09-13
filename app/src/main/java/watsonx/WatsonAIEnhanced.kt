@@ -300,19 +300,22 @@ object WatsonAIEnhanced {
                     "get_podcasts_by_category", "get_recommended_podcasts", "search_podcasts",
                     "get_health_podcasts", "get_history_podcasts", "get_education_podcasts",
                     "get_news_podcasts", "get_business_podcasts", "get_science_podcasts",
-                    "get_technology_podcasts"
+                    "get_technology_podcasts", "get_podcast_episodes", "get_podcast_categories"
                 ) -> {
                     PodcastFunctions.execute(correctedName, functionCall.arguments)
                 }
+
                 correctedName in listOf(
                     "get_recommended_news", "get_latest_news", "search_news", 
-                    "get_news_summary", "get_news_by_category"
+                    "get_news_summary", "get_news_by_category", "get_news_categories",
+                    "get_health_news", "get_business_news", "get_technology_news",
+                    "get_science_news", "get_entertainment_news", "get_sports_news"
                 ) -> {
                     NewsFunctions.execute(correctedName, functionCall.arguments)
                 }
                 else -> {
                     Log.w(TAG, "Unknown function type: $correctedName")
-                    "Sorry, unrecognized function request."
+                    "Sorry, unrecognized request."
                 }
             }
             

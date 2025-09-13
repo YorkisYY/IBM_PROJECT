@@ -100,14 +100,8 @@ I can recommend podcasts from these categories:
 **News** (news)
    Current events, news analysis, political discussions, world updates
 
-**Religion & Spirituality** (religion_spirituality)
-   Spiritual guidance, meditation, personal growth, faith discussions
-
 **Science** (science)
    Scientific discoveries, research findings, nature documentaries
-
-**Arts** (arts)
-   Art appreciation, cultural discussions, creative processes
 
 **Business** (business)
    Business insights, entrepreneurship, investment advice, career tips
@@ -115,11 +109,6 @@ I can recommend podcasts from these categories:
 **Technology** (technology)
    Tech news, gadget reviews, digital trends, innovation
 
-**Society & Culture** (society_culture)
-   Social issues, cultural trends, human interest stories
-
-**Leisure** (leisure)
-   Hobbies, entertainment, travel, lifestyle content
 
 Which category interests you most? Just tell me the category name and I'll find great podcasts for you!
             """.trimIndent()
@@ -441,12 +430,6 @@ Which category interests you most? Just tell me the category name and I'll find 
                 description = "Learning new skills and practical knowledge"
             ),
             CategoryRecommendation(
-                id = "religion_spirituality",
-                name = "Spirituality & Mindfulness",
-                english = "religion_spirituality",
-                description = "Spiritual guidance, meditation, and personal growth"
-            ),
-            CategoryRecommendation(
                 id = "news",
                 name = "News & Current Events",
                 english = "news",
@@ -470,18 +453,6 @@ Which category interests you most? Just tell me the category name and I'll find 
                 english = "technology",
                 description = "Tech news, gadget reviews, and digital innovation"
             ),
-            CategoryRecommendation(
-                id = "arts",
-                name = "Arts & Culture",
-                english = "arts",
-                description = "Art appreciation and cultural discussions"
-            ),
-            CategoryRecommendation(
-                id = "leisure",
-                name = "Leisure & Hobbies",
-                english = "leisure",
-                description = "Gardening, cooking, crafts, and recreational activities"
-            )
         )
     }
     
