@@ -29,9 +29,9 @@ class ChatRepository {
         private const val MAX_STORED_MESSAGES = 20
         
         // Context quality control parameters
-        private const val MAX_CONTEXT_MESSAGES = 2
+        private const val MAX_CONTEXT_MESSAGES = 1
         private const val MIN_QUALITY_SCORE = 0.3
-        private const val MAX_SUMMARY_LENGTH = 300
+        private const val MAX_SUMMARY_LENGTH = 10
     }
     
     private val firestore = FirebaseFirestore.getInstance()
@@ -174,7 +174,7 @@ class ChatRepository {
                     "$action ${nextWords.joinToString(" ")}"
                 } else ""
             }
-        }.take(50) // Limit intent description length
+        }.take(5) // Limit intent description length
     }
     
     /**

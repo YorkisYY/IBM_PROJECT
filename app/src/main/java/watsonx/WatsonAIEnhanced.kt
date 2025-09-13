@@ -176,16 +176,12 @@ object WatsonAIEnhanced {
         val context = StringBuilder()
         
         // System instructions
-        context.append("=== SYSTEM INSTRUCTIONS ===\n")
         context.append("You are a helpful AI assistant for elderly users.\n")
-        context.append("Be warm, caring, but focused and clear.\n")
-        context.append("Current time: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}\n\n")
         
         // Add conversation history if available
         if (contextHistory.isNotEmpty()) {
             context.append("=== CONVERSATION HISTORY (Reference Only) ===\n")
             context.append(contextHistory)
-            context.append("\n=== END OF HISTORY ===\n\n")
         }
         
         // Behavior rules
