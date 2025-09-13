@@ -144,6 +144,17 @@ class MainActivity : ComponentActivity() {
             permissionsToRequest.add(Manifest.permission.CAMERA)
         }
         
+       
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
+            != PackageManager.PERMISSION_GRANTED) {
+            permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+        
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) 
+            != PackageManager.PERMISSION_GRANTED) {
+            permissionsToRequest.add(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
+        
         if (permissionsToRequest.isNotEmpty()) {
             permissionLauncher.launch(permissionsToRequest.toTypedArray())
         } else {
@@ -153,14 +164,23 @@ class MainActivity : ComponentActivity() {
 
     private fun handlePermissionResults(permissions: Map<String, Boolean>) {
         val cameraGranted = permissions[Manifest.permission.CAMERA] ?: false
+        val locationFineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val locationCoarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
         
         if (cameraGranted) {
             Log.d(TAG, "Camera permission granted")
-            checkARCoreAvailability()
         } else {
             Log.w(TAG, "Camera permission denied")
             arRenderer.trackingStatus.value = "Camera Permission Required"
         }
+        
+        if (locationFineGranted || locationCoarseGranted) {
+            Log.d(TAG, "Location permission granted")
+        } else {
+            Log.w(TAG, "Location permission denied")
+        }
+        
+        checkARCoreAvailability()
     }
 
     private fun checkARCoreAvailability() {
@@ -239,16 +259,7 @@ class MainActivity : ComponentActivity() {
         LaunchedEffect(Unit) {
             try {
                 Log.d(TAG, "Starting initialization...")
-                
-                val currentUser = authRepository.getCurrentUser()
-                if (currentUser != null && !currentUser.isAnonymous) {
-                    WatsonAIEnhanced.initialize(context as MainActivity, chatRepository)
-                    Log.d(TAG, "Initialized with ChatRepository for authenticated user")
-                } else {
-                    WatsonAIEnhanced.initialize(context as MainActivity, null)
-                    Log.d(TAG, "Initialized with ContextManager for anonymous user")
-                }
-                
+                WatsonAIEnhanced.initialize(context as MainActivity)
                 Log.d(TAG, "Initialization completed")
             } catch (e: Exception) {
                 Log.e(TAG, "Initialization failed: ${e.message}", e)
@@ -617,7 +628,7 @@ class MainActivity : ComponentActivity() {
                     },
                     placeholder = when {
                         touchHandler.getSelectedNode() != null -> "Rotate with drag..."
-                        modelsCount > 0 -> "Start your chat !"
+                        modelsCount > 0 -> "Start your chat!"
                         else -> "Tap to place models"
                     },
                     isLoading = isLoading
@@ -679,7 +690,7 @@ class MainActivity : ComponentActivity() {
                     val aiResponse = if (result.success && result.response.isNotEmpty()) {
                         result.response
                     } else {
-                        "There is problem of dialog creation, please reopen the app and start the conversation sometimes it takes several times to reactive watsonx.ai, or you can email to my creator York! (yyisyork@gmail.com)"
+                        "There is a problem with dialog creation, please reopen the app and start the conversation. Sometimes it takes several attempts to reactivate watsonx.ai, or you can email my creator York! (yyisyork@gmail.com)"
                     }
                     
                     // Save conversation (Firebase for Google users, local memory for anonymous)

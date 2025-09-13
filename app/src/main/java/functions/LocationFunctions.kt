@@ -58,8 +58,8 @@ object LocationFunctions {
         val result = """
             Your current location information:
             Location: ${weatherData.city}, ${weatherData.country}
-            Detection method: ${if (hasLocationPermission()) "GPS + wttr.in API" else "IP location + wttr.in API"}
-            Coordinates: Available via wttr.in service
+            Detection method: ${if (hasLocationPermission()) "GPS + Open-Meteo API" else "IP location + Open-Meteo API"}
+            Coordinates: Available via Open-Meteo service
             Area type: ${getAreaType(weatherData.city)}
         """.trimIndent()
         
@@ -88,10 +88,10 @@ object LocationFunctions {
             Detailed location information:
             City: ${weatherData.city}
             Country: ${weatherData.country}
-            Detection method: ${if (hasLocationPermission()) "GPS coordinates + wttr.in geocoding" else "IP-based location + wttr.in geocoding"}
+            Detection method: ${if (hasLocationPermission()) "GPS coordinates + Open-Meteo geocoding" else "IP-based location + Open-Meteo geocoding"}
             Location accuracy: ${if (hasLocationPermission()) "High (GPS-based)" else "Medium (IP-based)"}
             Area classification: ${getAreaType(weatherData.city)}
-            Service provider: wttr.in location API
+            Service provider: Open-Meteo location API
             Current temperature: ${weatherData.temperature}°C (bonus weather info)
         """.trimIndent()
         
@@ -143,7 +143,7 @@ object LocationFunctions {
             """
                 Location service test successful!
                 Test location: ${weatherData.city}, ${weatherData.country}
-                Detection method: ${if (hasLocationPermission()) "GPS + wttr.in" else "IP + wttr.in"}
+                Detection method: ${if (hasLocationPermission()) "GPS + Open-Meteo" else "IP + Open-Meteo"}
                 Service status: Ready (using WeatherFunctions location logic)
                 Cache status: ${weatherService.getCacheStatus()}
             """.trimIndent()
@@ -163,7 +163,7 @@ object LocationFunctions {
             """
                 Location service ready (using WeatherFunctions method)
                 Permission: ${if (hasPermission) "Granted (GPS available)" else "Using IP location"}
-                API: wttr.in location service
+                API: Open-Meteo location service
                 Cache: ${weatherService.getCacheStatus()}
             """.trimIndent()
         } else {
