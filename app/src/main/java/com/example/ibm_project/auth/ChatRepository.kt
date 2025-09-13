@@ -26,10 +26,10 @@ class ChatRepository {
     companion object {
         private const val TAG = "ChatRepository"
         private const val CHAT_COLLECTION = "chat_history"
-        private const val MAX_STORED_MESSAGES = 50
+        private const val MAX_STORED_MESSAGES = 20
         
         // Context quality control parameters
-        private const val MAX_CONTEXT_MESSAGES = 4
+        private const val MAX_CONTEXT_MESSAGES = 2
         private const val MIN_QUALITY_SCORE = 0.3
         private const val MAX_SUMMARY_LENGTH = 300
     }
