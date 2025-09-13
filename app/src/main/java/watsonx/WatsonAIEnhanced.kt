@@ -22,14 +22,14 @@ import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import javax.net.ssl.*
 
-
 /**
- * Enhanced Watson AI Service - with context management and SMS functionality
+ * Enhanced Watson AI Service - with context management and multiple function support
  */
 object WatsonAIEnhanced {
     
     private const val TAG = "WatsonAIEnhanced"
     private var chatRepository: com.example.ibm_project.chat.ChatRepository? = null
+    
     private val config = WatsonAIConfig(
         baseUrl = "https://eu-gb.ml.cloud.ibm.com",
         apiKey = "nP5c0_UJMcNbYTNM3OInGLqjygVLcH-SMloxyZfxH81U",
@@ -54,13 +54,14 @@ object WatsonAIEnhanced {
         .sslSocketFactory(createTrustAllSslContext().socketFactory, createTrustAllManager())
         .hostnameVerifier { _, _ -> true }
         .build()
+        
     private fun createTrustAllManager(): X509TrustManager {
-    return object : X509TrustManager {
-        override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-        override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
-        override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+        return object : X509TrustManager {
+            override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
+            override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
+            override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+        }
     }
-}
 
     private fun createTrustAllSslContext(): SSLContext {
         val trustManager = createTrustAllManager()
@@ -91,7 +92,7 @@ object WatsonAIEnhanced {
     }
     
     /**
-     * Enhanced AI Response - supports context and multiple functions
+     * Enhanced AI Response with optimized context management
      */
     suspend fun getEnhancedAIResponse(userMessage: String): AIResult {
         return try {
@@ -105,28 +106,46 @@ object WatsonAIEnhanced {
                 )
             }
             
-            val response: String
+            var response: String
             
             if (chatRepository != null) {
-                chatRepository!!.loadChatHistory()
-                val smartContext = chatRepository!!.getSmartConversationContext(userMessage, true)
-                
-                response = if (promptManager.mightNeedFunctionCall(userMessage)) {
-                    val functionPrompt = promptManager.buildFunctionCallingPrompt(userMessage, smartContext)
-                    val aiResponse = callWatsonAI(functionPrompt)
+                // Use optimized ChatRepository context system
+                try {
+                    chatRepository!!.loadChatHistory()
                     
-                    if (promptManager.containsFunctionCall(aiResponse)) {
-                        executeFunctionAndGenerateResponse(aiResponse, userMessage)
+                    // Get query-aware context using the new system
+                    val optimizedContext = chatRepository!!.getQueryAwareContext(userMessage)
+                    
+                    // Build complete prompt with context
+                    val fullPrompt = buildContextualPrompt(userMessage, optimizedContext)
+                    
+                    response = if (promptManager.mightNeedFunctionCall(userMessage)) {
+                        // Handle function calling
+                        val aiResponse = callWatsonAI(fullPrompt)
+                        
+                        if (promptManager.containsFunctionCall(aiResponse)) {
+                            executeFunctionAndGenerateResponse(aiResponse, userMessage)
+                        } else {
+                            aiResponse
+                        }
                     } else {
-                        aiResponse
+                        // Direct conversation
+                        callWatsonAI(fullPrompt)
                     }
-                } else {
-                    callWatsonAI(smartContext)
+                    
+                    // Save the conversation
+                    chatRepository!!.saveChatMessage(userMessage, response)
+                    
+                } catch (e: Exception) {
+                    Log.e(TAG, "ChatRepository context failed, falling back to ContextManager: ${e.message}")
+                    // Fallback to ContextManager
+                    ContextManager.addToHistory(userMessage, "user")
+                    response = processWithFunctionCalling(userMessage.trim())
+                    ContextManager.addToHistory(response, "assistant")
                 }
                 
-                chatRepository!!.saveChatMessage(userMessage, response)
-                
             } else {
+                // Use ContextManager as fallback
                 ContextManager.addToHistory(userMessage, "user")
                 response = processWithFunctionCalling(userMessage.trim())
                 ContextManager.addToHistory(response, "assistant")
@@ -141,19 +160,76 @@ object WatsonAIEnhanced {
             
         } catch (e: Exception) {
             Log.e(TAG, "Enhanced AI processing failed: ${e.message}")
+            // 提供默認錯誤回覆
             AIResult(
-                success = false,
-                response = "",
-                error = e.message ?: "Unknown error"
+                success = true,  // 改為 true 以提供友好的錯誤訊息
+                response = "I'm experiencing some technical difficulties right now. Please try again in a moment.",
+                error = null
             )
         }
     }
     
     /**
-     * Process Function Calling - supports weather and SMS
+     * Build contextual prompt with optimized context
+     */
+    private fun buildContextualPrompt(userMessage: String, contextHistory: String = ""): String {
+        val context = StringBuilder()
+        
+        // System instructions
+        context.append("=== SYSTEM INSTRUCTIONS ===\n")
+        context.append("You are a helpful AI assistant for elderly users.\n")
+        context.append("Be warm, caring, but focused and clear.\n")
+        context.append("Current time: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}\n\n")
+        
+        // Add conversation history if available
+        if (contextHistory.isNotEmpty()) {
+            context.append("=== CONVERSATION HISTORY (Reference Only) ===\n")
+            context.append(contextHistory)
+            context.append("\n=== END OF HISTORY ===\n\n")
+        }
+        
+        // Behavior rules
+        context.append("=== BEHAVIOR RULES ===\n")
+        context.append("1. Answer the CURRENT USER QUESTION first and completely\n")
+        context.append("2. Use conversation history for context only, do not repeat it\n")
+        context.append("3. Be concise and focused on what the user is asking\n")
+        context.append("DO NOT suggest additional features\n\n")
+        
+        // Current message
+        context.append("Current message: $userMessage")
+        
+        val finalPrompt = context.toString()
+        
+        // Final safety check: limit prompt length
+        return if (finalPrompt.length > 8000) {
+            Log.w(TAG, "Prompt too long (${finalPrompt.length} chars), applying emergency truncation")
+            truncatePromptSafely(finalPrompt, userMessage)
+        } else {
+            finalPrompt
+        }
+    }
+    
+    /**
+     * Emergency prompt truncation while preserving essential parts
+     */
+    private fun truncatePromptSafely(prompt: String, userMessage: String): String {
+        val lines = prompt.lines()
+        val systemLines = lines.takeWhile { !it.contains("CONVERSATION HISTORY") }
+        val rulesAndMessage = lines.dropWhile { !it.contains("BEHAVIOR RULES") }
+        
+        // Keep system instructions + rules + current message, truncate history
+        val truncated = (systemLines + listOf("...[context truncated for length]...") + rulesAndMessage)
+            .joinToString("\n")
+            .take(7000) // Conservative limit
+        
+        Log.w(TAG, "Applied emergency truncation: ${prompt.length} -> ${truncated.length} chars")
+        return truncated
+    }
+    
+    /**
+     * Process with function calling support
      */
     private suspend fun processWithFunctionCalling(userMessage: String): String {
-        // Step 1: Use PromptManager to check if function call is needed
         if (promptManager.mightNeedFunctionCall(userMessage)) {
             Log.d(TAG, "Detected potential function call needed, using function calling prompt")
             return handleWithFunctionCallingPrompt(userMessage)
@@ -164,7 +240,7 @@ object WatsonAIEnhanced {
     }
     
     /**
-     * Process using Function Calling Prompt
+     * Handle function calling prompt
      */
     private suspend fun handleWithFunctionCallingPrompt(userMessage: String): String {
         Log.d(TAG, "Using Function Calling Prompt")
@@ -175,7 +251,7 @@ object WatsonAIEnhanced {
         // Call Watson AI
         val aiResponse = callWatsonAI(functionPrompt)
         
-        // Use PromptManager to check if function call is contained
+        // Check if function call is contained
         return if (promptManager.containsFunctionCall(aiResponse)) {
             Log.d(TAG, "AI recognized need to call function")
             executeFunctionAndGenerateResponse(aiResponse, userMessage)
@@ -186,7 +262,7 @@ object WatsonAIEnhanced {
     }
     
     /**
-     * Execute function and generate final response - supports weather and SMS
+     * Execute function and generate final response
      */
     private suspend fun executeFunctionAndGenerateResponse(aiResponse: String, originalMessage: String): String {
         return try {
@@ -197,17 +273,17 @@ object WatsonAIEnhanced {
                 return aiResponse
             }
             
-            // Add this section: Fix incorrect function names
-            var correctedName = functionCall.name
-            if (functionCall.name == "read_latest_message") {
-                correctedName = "get_latest_message"
-                Log.d(TAG, "Fixed function name: read_latest_message → get_latest_message")
+            // Fix incorrect function names - 確保使用 var
+            val correctedName = if (functionCall.name == "read_latest_message") {
+                Log.d(TAG, "Fixed function name: read_latest_message -> get_latest_message")
+                "get_latest_message"
+            } else {
+                functionCall.name
             }
-            
+                        
             Log.d(TAG, "Executing function: $correctedName")
             Log.d(TAG, "Function parameters: ${functionCall.arguments}")
             
-            // Call corresponding service based on function type
             // Call corresponding service based on function type
             val functionResult = when {
                 correctedName.startsWith("get_") && correctedName.contains("weather") -> {
@@ -257,7 +333,7 @@ object WatsonAIEnhanced {
     }
     
     /**
-     * Extract function call information
+     * Extract function call information from AI response
      */
     private fun extractFunctionCall(response: String): FunctionCall? {
         return try {
@@ -305,7 +381,7 @@ object WatsonAIEnhanced {
     }
     
     /**
-     * Generate final user-friendly response - supports multiple functions
+     * Generate final user-friendly response
      */
     private suspend fun generateFinalResponse(originalMessage: String, functionResult: String, functionName: String): String {
         // Use PromptManager to build final response prompt
@@ -323,7 +399,7 @@ object WatsonAIEnhanced {
     }
     
     /**
-     * Process normal conversation - with context
+     * Handle normal conversation without function calling
      */
     private suspend fun handleNormalConversation(userMessage: String): String {
         Log.d(TAG, "Processing normal conversation")
@@ -347,7 +423,7 @@ object WatsonAIEnhanced {
     }
     
     /**
-     * Call Watson AI API - based on your existing working code
+     * Call Watson AI API with enhanced error handling
      */
     private suspend fun callWatsonAI(prompt: String): String = withContext(Dispatchers.IO) {
         val token = getIAMToken()
@@ -378,7 +454,6 @@ object WatsonAIEnhanced {
             Log.d(TAG, "Making HTTP request...")  
             val response = client.newCall(request).execute()
             Log.d(TAG, "Response status: ${response.code}")
-            Log.d(TAG, "Response headers: ${response.headers}")  
             
             if (!response.isSuccessful) {
                 val errorText = response.body?.string() ?: ""
@@ -397,13 +472,12 @@ object WatsonAIEnhanced {
         } catch (e: Exception) {
             Log.e(TAG, "Watson AI call failed: ${e.message}")
             Log.e(TAG, "Exception type: ${e::class.java.simpleName}")  
-            Log.e(TAG, "Stack trace: ${e.stackTrace.contentToString()}")  
             throw e
         }
     }
     
     /**
-     * Parse Watson AI response - based on your existing logic
+     * Parse Watson AI response with multiple format support
      */
     private fun parseResponse(data: WatsonResponse): String {
         Log.d(TAG, "Parsing response data...")
@@ -451,9 +525,8 @@ object WatsonAIEnhanced {
     }
     
     /**
-     * Get IAM Token - reuse your existing logic
+     * Get IAM Token with caching
      */
-
     private suspend fun getIAMToken(): String = withContext(Dispatchers.IO) {
         Log.d(TAG, "Checking cached token...")
         if (cachedToken != null && System.currentTimeMillis() < tokenExpirationTime - 300_000) {
@@ -504,7 +577,7 @@ object WatsonAIEnhanced {
     }
     
     /**
-     * Test all services
+     * Test all enhanced services
      */
     suspend fun testEnhancedService(): AIResult {
         return try {
@@ -574,7 +647,7 @@ object WatsonAIEnhanced {
     }
     
     /**
-     * Get complete service status
+     * Get complete service status information
      */
     fun getServiceStatus(): String {
         val baseStatus = when {
@@ -604,9 +677,7 @@ object WatsonAIEnhanced {
         """.trimIndent()
     }
     
-    /**
-     * Data class definitions - reuse your existing structure
-     */
+    // Data class definitions
     @Serializable
     private data class WatsonAIConfig(
         val baseUrl: String,
@@ -649,7 +720,7 @@ object WatsonAIEnhanced {
         val results: List<GenerationResult>? = null,
         @SerialName("generated_text") val generatedText: String? = null,
         val result: String? = null,
-        val response: String? = null,
+        var response: String? = null,
         val content: String? = null,
         val text: String? = null
     )
@@ -665,7 +736,7 @@ object WatsonAIEnhanced {
      */
     data class AIResult(
         val success: Boolean,
-        val response: String,
+        var response: String,
         val error: String? = null
     )
 }

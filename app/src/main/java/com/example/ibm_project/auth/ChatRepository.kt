@@ -7,8 +7,6 @@ import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import java.text.SimpleDateFormat
-import java.util.*
 
 data class ChatMessage(
     val id: String = "",
@@ -18,15 +16,22 @@ data class ChatMessage(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+/**
+ * ChatRepository focused on context cleaning and intelligent summarization
+ * Supports Firebase for authenticated users and local storage for anonymous users
+ * Enhanced with emotion, health, and personal information detection
+ */
 class ChatRepository {
     
     companion object {
         private const val TAG = "ChatRepository"
         private const val CHAT_COLLECTION = "chat_history"
-        private const val MAX_MESSAGES = 50
-        private const val MESSAGES_TO_KEEP = 30
-        private const val CONTEXT_MESSAGES = 5  // 用於上下文的訊息數
-        private const val SUGGESTION_COOLDOWN = 10 * 60 * 1000L // 10分鐘冷卻期
+        private const val MAX_STORED_MESSAGES = 50
+        
+        // Context quality control parameters
+        private const val MAX_CONTEXT_MESSAGES = 4
+        private const val MIN_QUALITY_SCORE = 0.3
+        private const val MAX_SUMMARY_LENGTH = 300
     }
     
     private val firestore = FirebaseFirestore.getInstance()
@@ -41,457 +46,414 @@ class ChatRepository {
     val chatHistory: StateFlow<List<ChatMessage>> get() = 
         if (isUserAuthenticated()) _firebaseChatHistory else _localChatHistory
     
-    // 推薦追蹤系統
-    private val suggestionHistory = mutableMapOf<String, Long>()
-    private val recentlyMentionedFeatures = mutableSetOf<String>()
+    // === Function name compatibility - support all previously used function names ===
     
     /**
-     * Check if user is authenticated (Google sign-in)
-     */
-    private fun isUserAuthenticated(): Boolean {
-        val currentUser = auth.currentUser
-        return currentUser != null && !currentUser.isAnonymous
-    }
-    
-    /**
-     * 核心方法：獲取智能對話上下文（包含 timestamp 和所有邏輯）
+     * Legacy function name compatibility
      */
     fun getConversationContext(): String {
-        val currentQuery = "" // 這個方法只返回歷史
-        return getSmartConversationContext(currentQuery, false)
+        return getQueryAwareContext("")
     }
     
     /**
-     * 智能上下文生成 - 主要方法
+     * Another legacy function name compatibility
      */
     fun getSmartConversationContext(currentQuery: String, includeCurrentQuery: Boolean = true): String {
-        // 1. 獲取並排序歷史訊息
-        val recentMessages = chatHistory.value
-            .sortedBy { it.timestamp }
-            .takeLast(CONTEXT_MESSAGES)
-        
-        // 2. 分析對話模式
-        val pattern = analyzeConversationPattern(recentMessages)
-        
-        // 3. 決定推薦策略
-        val suggestionStrategy = if (includeCurrentQuery) {
-            determineSuggestionStrategy(currentQuery, pattern)
-        } else {
-            SuggestionStrategy.NONE
-        }
-        
-        // 4. 生成動態規則
-        val dynamicRules = generateDynamicRules(currentQuery, pattern, suggestionStrategy)
-        
-        // 5. 組裝完整上下文
-        return buildCompleteContext(
-            recentMessages,
-            currentQuery,
-            dynamicRules,
-            suggestionStrategy,
-            includeCurrentQuery
-        )
+        return getQueryAwareContext(currentQuery)
     }
     
     /**
-     * 分析對話模式
+     * Get query-aware context summary - returns intelligent summary instead of full conversation
+     * This is the main method called by WatsonAIEnhanced
      */
-    private fun analyzeConversationPattern(messages: List<ChatMessage>): ConversationPattern {
-        if (messages.isEmpty()) {
-            return ConversationPattern()
+    fun getQueryAwareContext(currentQuery: String = ""): String {
+        val allMessages = chatHistory.value
+        if (allMessages.isEmpty()) return ""
+        
+        // Step 1: Filter polluted messages
+        val cleanMessages = allMessages.filter { !isPollutedMessage(it) }
+        
+        if (cleanMessages.isEmpty()) {
+            Log.d(TAG, "No clean messages available for context")
+            return ""
         }
         
-        val recentTopics = mutableSetOf<String>()
-        val mentionedFunctions = mutableListOf<String>()
+        // Step 2: Evaluate message quality and select best ones
+        val qualityMessages = cleanMessages
+            .takeLast(MAX_CONTEXT_MESSAGES * 2)
+            .map { message -> 
+                MessageWithScore(message, calculateMessageQuality(message, currentQuery))
+            }
+            .filter { it.qualityScore >= MIN_QUALITY_SCORE }
+            .sortedByDescending { it.qualityScore }
+            .take(MAX_CONTEXT_MESSAGES)
+            .sortedBy { it.message.timestamp }
         
-        messages.forEach { msg ->
-            // 從訊息中提取主題
-            val topics = extractTopics(msg.userMessage)
-            recentTopics.addAll(topics)
+        if (qualityMessages.isEmpty()) {
+            Log.d(TAG, "No high-quality messages for context")
+            return ""
+        }
+        
+        // Step 3: Create intelligent summary instead of full context
+        val summary = createIntelligentSummary(qualityMessages.map { it.message }, currentQuery)
+        
+        Log.d(TAG, "Context summary created: ${summary.length} chars from ${qualityMessages.size} messages")
+        
+        return summary
+    }
+    
+    /**
+     * Create intelligent summary - extract key information only
+     */
+    private fun createIntelligentSummary(messages: List<ChatMessage>, currentQuery: String): String {
+        val summaryParts = mutableListOf<String>()
+        
+        messages.forEach { message ->
+            // Extract user intent
+            val userIntent = extractUserIntent(message.userMessage)
+            if (userIntent.isNotEmpty()) {
+                summaryParts.add("User asked: $userIntent")
+            }
             
-            // 從 AI 回應中提取提及的功能
-            val mentions = extractFunctionMentions(msg.aiResponse)
-            mentionedFunctions.addAll(mentions)
-        }
-        
-        // 檢查是否重複詢問
-        val isRepetitive = messages.size >= 2 && 
-            messages.takeLast(2).all { msg ->
-                extractMainTopic(msg.userMessage) == extractMainTopic(messages.last().userMessage)
+            // Extract key data from AI response
+            val keyData = extractKeyData(message.aiResponse)
+            if (keyData.isNotEmpty()) {
+                summaryParts.add("Data: $keyData")
             }
-        
-        // 檢測用戶情緒
-        val mood = detectUserMood(messages)
-        
-        return ConversationPattern(
-            recentTopics = recentTopics,
-            recentlyMentionedFunctions = mentionedFunctions.distinct(),
-            isRepetitiveQuery = isRepetitive,
-            userMood = mood,
-            messageCount = messages.size
-        )
-    }
-    
-    /**
-     * 決定推薦策略
-     */
-    private fun determineSuggestionStrategy(
-        query: String,
-        pattern: ConversationPattern
-    ): SuggestionStrategy {
-        val lowerQuery = query.lowercase()
-        
-        // 用戶明確不要推薦
-        if (lowerQuery.contains("just") || 
-            lowerQuery.contains("only") ||
-            lowerQuery.contains("don't suggest") ||
-            lowerQuery.contains("stop recommending")) {
-            return SuggestionStrategy.NONE
+            
+            // Check length limit
+            val currentSummary = summaryParts.joinToString(". ")
+            if (currentSummary.length > MAX_SUMMARY_LENGTH) {
+                return@forEach
+            }
         }
         
-        // 用戶情緒不佳或重複詢問同一件事
-        if (pattern.userMood == UserMood.FRUSTRATED || pattern.isRepetitiveQuery) {
-            Log.d(TAG, "User seems frustrated or asking repeatedly - no suggestions")
-            return SuggestionStrategy.NONE
-        }
-        
-        // 檢查冷卻期
-        val suggestions = getPossibleSuggestions(query, pattern)
-        val validSuggestion = suggestions.firstOrNull { canSuggest(it) }
-        
-        return if (validSuggestion != null) {
-            SuggestionStrategy.GENTLE(validSuggestion)
+        // Adjust summary for current query if relevant
+        val finalSummary = if (currentQuery.isNotEmpty()) {
+            adjustSummaryForQuery(summaryParts.joinToString(". "), currentQuery)
         } else {
-            SuggestionStrategy.NONE
+            summaryParts.joinToString(". ")
         }
+        
+        return finalSummary.take(MAX_SUMMARY_LENGTH)
     }
     
     /**
-     * 生成動態規則（根據當前查詢和歷史）
+     * Extract user intent from message
      */
-    private fun generateDynamicRules(
-        query: String,
-        pattern: ConversationPattern,
-        strategy: SuggestionStrategy
-    ): String {
-        val rules = mutableListOf<String>()
-        val lowerQuery = query.lowercase()
-        
-        rules.add("1. Answer the CURRENT USER QUESTION first and completely")
-        rules.add("2. Use conversation history for context only, do not repeat it")
-        rules.add("3. Be concise and focused on what the user is asking")
-        
-        // Check what user is currently asking about
-        val currentTopic = when {
-            lowerQuery.contains("podcast") -> "podcast"
-            lowerQuery.contains("message") || lowerQuery.contains("sms") -> "message"
-            lowerQuery.contains("weather") -> "weather"
-            lowerQuery.contains("news") -> "news"
-            lowerQuery.contains("location") || lowerQuery.contains("where") -> "location"
-            else -> "general"
-        }
-        
-        // Add positive instruction for current topic
-        when (currentTopic) {
-            "podcast" -> {
-                rules.add("CRITICAL: User is asking about PODCASTS")
-                rules.add("You MUST call get_recommended_podcasts or appropriate podcast function")
-                rules.add("DO NOT talk about messages or weather")
-            }
-            "message" -> {
-                rules.add("CRITICAL: User is asking about MESSAGES")
-                rules.add("You MUST call appropriate message function")
-                rules.add("DO NOT talk about podcasts or weather")
-            }
-            "weather" -> {
-                rules.add("CRITICAL: User is asking about WEATHER")
-                rules.add("You MUST call get_current_weather or appropriate weather function")
-                rules.add("DO NOT talk about messages or podcasts")
-            }
-            "news" -> {
-                rules.add("CRITICAL: User is asking about NEWS")
-                rules.add("You MUST call appropriate news function")
-            }
-            "location" -> {
-                rules.add("CRITICAL: User is asking about LOCATION")
-                rules.add("You MUST call appropriate location function")
-            }
-        }
-        
-        // Only restrict topics NOT being asked about
-        if (currentTopic != "weather" && pattern.recentlyMentionedFunctions.contains("weather")) {
-            rules.add("DO NOT mention weather unless specifically asked")
-        }
-        
-        if (currentTopic != "podcast" && pattern.recentlyMentionedFunctions.contains("podcast")) {
-            rules.add("DO NOT mention podcasts unless specifically asked")
-        }
-        
-        if (currentTopic != "message" && pattern.recentlyMentionedFunctions.contains("message")) {
-            rules.add("DO NOT mention messages unless specifically asked")
-        }
-        
-        // Handle suggestion strategy
-        when (strategy) {
-            is SuggestionStrategy.GENTLE -> {
-                if (currentTopic == "general") {
-                    rules.add("After answering, you MAY gently suggest: ${strategy.feature}")
-                }
-            }
-            SuggestionStrategy.NONE -> {
-                if (currentTopic == "general") {
-                    rules.add("DO NOT suggest additional features")
-                }
-            }
-        }
-        
-        return rules.joinToString("\n")
-    }
-        
-    /**
-     * 建立完整的結構化上下文
-     */
-    private fun buildCompleteContext(
-        messages: List<ChatMessage>,
-        currentQuery: String,
-        rules: String,
-        strategy: SuggestionStrategy,
-        includeCurrentQuery: Boolean
-    ): String {
-        val context = StringBuilder()
-        
-        // 1. 系統指令
-        context.append("=== SYSTEM INSTRUCTIONS ===\n")
-        context.append("You are a helpful AI assistant for elderly users.\n")
-        context.append("Be warm, caring, but focused and clear.\n")
-        context.append("Current time: ${formatTimestamp(System.currentTimeMillis())}\n\n")
-        
-        // 2. 歷史對話（包含 timestamp）
-        if (messages.isNotEmpty()) {
-            context.append("=== CONVERSATION HISTORY (Reference Only) ===\n")
-            messages.forEach { msg ->
-                val timeStr = formatTimestamp(msg.timestamp)
-                val timeDiff = getTimeDifference(msg.timestamp)
-                
-                context.append("[$timeStr - $timeDiff ago]\n")
-                context.append("User: ${msg.userMessage}\n")
-                
-                // 限制 AI 回應長度
-                val truncatedResponse = if (msg.aiResponse.length > 150) {
-                    "${msg.aiResponse.take(150)}..."
-                } else {
-                    msg.aiResponse
-                }
-                context.append("Assistant: $truncatedResponse\n")
-                context.append("---\n")
-            }
-            context.append("=== END OF HISTORY ===\n\n")
-        }
-        
-        // 3. 當前問題（如果需要）
-        if (includeCurrentQuery && currentQuery.isNotEmpty()) {
-            context.append("=== CURRENT USER QUESTION (Answer This ONLY) ===\n")
-            context.append("[${formatTimestamp(System.currentTimeMillis())}] User: $currentQuery\n\n")
-        }
-        
-        // 4. 行為規則
-        context.append("=== BEHAVIOR RULES ===\n")
-        context.append(rules)
-        context.append("\n")
-        
-        // 5. 推薦指引（如果有）
-        if (strategy is SuggestionStrategy.GENTLE) {
-            context.append("\n=== SUGGESTION GUIDANCE ===\n")
-            context.append(getSuggestionTemplate(strategy.feature))
-            context.append("\n")
-        }
-        
-        return context.toString()
-    }
-    
-    /**
-     * 格式化時間戳
-     */
-    private fun formatTimestamp(timestamp: Long): String {
-        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        return sdf.format(Date(timestamp))
-    }
-    
-    /**
-     * 計算時間差
-     */
-    private fun getTimeDifference(timestamp: Long): String {
-        val diff = System.currentTimeMillis() - timestamp
-        val seconds = diff / 1000
-        val minutes = seconds / 60
-        val hours = minutes / 60
-        val days = hours / 24
+    private fun extractUserIntent(userMessage: String): String {
+        val message = userMessage.lowercase()
         
         return when {
-            days > 0 -> "$days day${if (days > 1) "s" else ""}"
-            hours > 0 -> "$hours hour${if (hours > 1) "s" else ""}"
-            minutes > 0 -> "$minutes min"
-            else -> "$seconds sec"
-        }
-    }
-    
-    /**
-     * 提取主題
-     */
-    private fun extractTopics(text: String): Set<String> {
-        val topics = mutableSetOf<String>()
-        val lowerText = text.lowercase()
-        
-        if (lowerText.contains("weather") || lowerText.contains("temperature")) topics.add("weather")
-        if (lowerText.contains("message") || lowerText.contains("sms")) topics.add("message")
-        if (lowerText.contains("podcast") || lowerText.contains("listen")) topics.add("podcast")
-        if (lowerText.contains("news")) topics.add("news")
-        if (lowerText.contains("location") || lowerText.contains("where am i")) topics.add("location")
-        
-        return topics
-    }
-    
-    /**
-     * 提取主要主題
-     */
-    private fun extractMainTopic(text: String): String {
-        val topics = extractTopics(text)
-        return topics.firstOrNull() ?: "general"
-    }
-    
-    /**
-     * 從 AI 回應提取提及的功能
-     */
-    private fun extractFunctionMentions(response: String): List<String> {
-        val mentions = mutableListOf<String>()
-        val lowerResponse = response.lowercase()
-        
-        if (lowerResponse.contains("weather") || lowerResponse.contains("temperature")) {
-            mentions.add("weather")
-        }
-        if (lowerResponse.contains("podcast")) {
-            mentions.add("podcast")
-        }
-        if (lowerResponse.contains("message") || lowerResponse.contains("sms")) {
-            mentions.add("message")
-        }
-        if (lowerResponse.contains("news")) {
-            mentions.add("news")
-        }
-        
-        return mentions
-    }
-    
-    /**
-     * 檢測用戶情緒
-     */
-    private fun detectUserMood(messages: List<ChatMessage>): UserMood {
-        if (messages.isEmpty()) return UserMood.NEUTRAL
-        
-        val lastMessages = messages.takeLast(3)
-        
-        // 檢查是否有挫折跡象
-        val frustrationKeywords = listOf("don't", "stop", "no", "wrong", "not what i")
-        val hasFrustration = lastMessages.any { msg ->
-            frustrationKeywords.any { keyword ->
-                msg.userMessage.lowercase().contains(keyword)
+            message.contains("weather") || message.contains("temperature") -> 
+                "weather info"
+            message.contains("message") || message.contains("sms") -> 
+                "check messages"
+            message.contains("news") -> 
+                "get news"
+            message.contains("podcast") -> 
+                "find podcasts"
+            message.contains("location") || message.contains("where") -> 
+                "location query"
+            message.contains("time") -> 
+                "time query"
+            message.contains("how") && (message.contains("feel") || message.contains("doing")) ->
+                "check wellbeing"
+            message.contains("family") || message.contains("daughter") || message.contains("son") ->
+                "family info"
+            message.contains("health") || message.contains("doctor") ->
+                "health query"
+            else -> {
+                // Extract verb + noun patterns
+                val actionWords = listOf("get", "find", "show", "tell", "check", "search")
+                val action = actionWords.find { message.contains(it) }
+                if (action != null) {
+                    val words = message.split(" ")
+                    val actionIndex = words.indexOfFirst { it.contains(action) }
+                    val nextWords = words.drop(actionIndex + 1).take(2)
+                    "$action ${nextWords.joinToString(" ")}"
+                } else ""
             }
+        }.take(50) // Limit intent description length
+    }
+    
+    /**
+     * Extract key data from AI response - Enhanced with emotion and personal info detection
+     * Keeps within 100 character limit for summary efficiency
+     */
+    private fun extractKeyData(aiResponse: String): String {
+        val keyInfo = mutableListOf<String>()
+        
+        // Extract numbers (temperature, quantities, etc.)
+        val numbers = "\\b\\d+(\\.\\d+)?\\s*(°C|°F|%|degrees?|items?|messages?)\\b"
+            .toRegex(RegexOption.IGNORE_CASE)
+            .findAll(aiResponse)
+            .map { it.value }
+            .take(2) // Reduced from 3 to 2
+        keyInfo.addAll(numbers)
+        
+        // Extract locations
+        val locations = "\\b[A-Z][a-z]+\\s?(City|Street|Road|Avenue|Area|District)\\b"
+            .toRegex()
+            .findAll(aiResponse)
+            .map { it.value }
+            .take(1) // Reduced from 2 to 1
+        keyInfo.addAll(locations)
+        
+        // Extract status words
+        val statusWords = listOf("sunny", "cloudy", "rainy", "hot", "cold", "available", "found", "sent")
+        val foundStatus = statusWords.filter { aiResponse.lowercase().contains(it) }.take(2)
+        keyInfo.addAll(foundStatus)
+        
+        // Extract time-related information
+        val timePattern = "\\b(today|tomorrow|yesterday|\\d{1,2}:\\d{2}|morning|afternoon|evening)\\b"
+            .toRegex(RegexOption.IGNORE_CASE)
+            .findAll(aiResponse)
+            .map { it.value }
+            .take(1) // Reduced from 2 to 1
+        keyInfo.addAll(timePattern)
+        
+        // Extract person names (but filter common words)
+        val names = "\\b[A-Z][a-z]{2,}(?:\\s+[A-Z][a-z]{2,})?\\b"
+            .toRegex()
+            .findAll(aiResponse)
+            .map { it.value.trim() }
+            .filter { !isCommonWord(it) }
+            .distinct()
+            .take(2)
+        keyInfo.addAll(names)
+        
+        // Extract emotional states and feelings (prioritized list)
+        val emotions = listOf(
+            // High priority emotions (most relevant for elderly care)
+            "happy", "sad", "worried", "good", "bad", "fine", "well", "better", "sick", "tired",
+            "excited", "upset", "calm", "stressed", "lonely", "cheerful", "anxious", "content",
+            
+            // Health-related states
+            "healthy", "unwell", "recovering", "weak", "strong"
+        )
+        val foundEmotions = emotions.filter { emotion ->
+            aiResponse.lowercase().contains(emotion)
+        }.distinct().take(2)
+        keyInfo.addAll(foundEmotions)
+        
+        // Extract health-related information (simplified)
+        val healthKeywords = listOf(
+            "doctor", "hospital", "medicine", "appointment", "pain", "headache", 
+            "fever", "checkup", "medication", "treatment", "pill"
+        )
+        val healthInfo = healthKeywords.filter { keyword ->
+            aiResponse.lowercase().contains(keyword)
+        }.distinct().take(1) // Only most important health info
+        keyInfo.addAll(healthInfo)
+        
+        // Extract family/relationship information (simplified)
+        val relationshipWords = listOf(
+            "daughter", "son", "family", "grandchild", "wife", "husband",
+            "friend", "visit", "called", "birthday"
+        )
+        val relationshipInfo = relationshipWords.filter { word ->
+            aiResponse.lowercase().contains(word)
+        }.distinct().take(1) // Only most important relationship info
+        keyInfo.addAll(relationshipInfo)
+        
+        return keyInfo.distinct().joinToString(" ").take(100) // Keep at 100 chars as requested
+    }
+    
+    /**
+     * Check if a word is a common word that shouldn't be treated as a name
+     */
+    private fun isCommonWord(word: String): Boolean {
+        val commonWords = listOf(
+            // Days and time
+            "Today", "Tomorrow", "Yesterday", "Morning", "Afternoon", "Evening",
+            
+            // Common phrases  
+            "There", "This", "That", "The", "You", "Your", "Here", "Where", "When", "What", "How",
+            "Good", "Bad", "Nice", "Great", "Well", "Better", "Fine", "Okay", "Sure", "Yes", "No",
+            
+            // Places (generic)
+            "Home", "Work", "School", "Store", "Hospital", "Park",
+            
+            // Weather and conditions
+            "Sunny", "Cloudy", "Rainy", "Hot", "Cold", "Warm", "Cool",
+            
+            // Technology/Apps
+            "Google", "Facebook", "Email", "Phone", "Computer"
+        )
+        
+        return word in commonWords
+    }
+    
+    /**
+     * Adjust summary focus based on current query
+     */
+    private fun adjustSummaryForQuery(summary: String, currentQuery: String): String {
+        val queryWords = currentQuery.lowercase().split(" ").filter { it.length > 2 }
+        if (queryWords.isEmpty()) return summary
+        
+        // Extract parts relevant to current query
+        val sentences = summary.split(". ")
+        val relevantSentences = sentences.filter { sentence ->
+            queryWords.any { word -> sentence.lowercase().contains(word) }
         }
         
-        if (hasFrustration) return UserMood.FRUSTRATED
-        
-        // 檢查是否專注於特定任務
-        val topics = lastMessages.flatMap { extractTopics(it.userMessage) }
-        if (topics.distinct().size == 1 && topics.size >= 2) {
-            return UserMood.FOCUSED
-        }
-        
-        return UserMood.NEUTRAL
-    }
-    
-    /**
-     * 獲取可能的推薦
-     */
-    private fun getPossibleSuggestions(query: String, pattern: ConversationPattern): List<String> {
-        val suggestions = mutableListOf<String>()
-        val lowerQuery = query.lowercase()
-        
-        // 智能推薦邏輯
-        when {
-            // 讀完訊息可能想知道天氣
-            (lowerQuery.contains("message") || lowerQuery.contains("sms")) -> {
-                if (!pattern.recentlyMentionedFunctions.contains("weather")) {
-                    suggestions.add("weather")
-                }
-            }
-            // 看完天氣可能想聽 podcast
-            lowerQuery.contains("weather") -> {
-                if (!pattern.recentlyMentionedFunctions.contains("podcast")) {
-                    suggestions.add("podcast")
-                }
-            }
-            // 看完新聞可能想查天氣
-            lowerQuery.contains("news") -> {
-                if (!pattern.recentlyMentionedFunctions.contains("weather")) {
-                    suggestions.add("weather")
-                }
-            }
-        }
-        
-        return suggestions
-    }
-    
-    /**
-     * 檢查是否可以推薦
-     */
-    private fun canSuggest(feature: String): Boolean {
-        val lastSuggested = suggestionHistory[feature] ?: 0L
-        val timeSince = System.currentTimeMillis() - lastSuggested
-        return timeSince > SUGGESTION_COOLDOWN
-    }
-    
-    /**
-     * 記錄推薦
-     */
-    fun recordSuggestion(feature: String) {
-        suggestionHistory[feature] = System.currentTimeMillis()
-        recentlyMentionedFeatures.add(feature)
-        Log.d(TAG, "Recorded suggestion for: $feature at ${System.currentTimeMillis()}")
-    }
-    
-    /**
-     * 獲取推薦模板
-     */
-    private fun getSuggestionTemplate(feature: String): String {
-        return when (feature) {
-            "weather" -> "Gently ask: 'Would you like me to check the weather for you?'"
-            "podcast" -> "Softly suggest: 'I can find a nice podcast if you'd like.'"
-            "news" -> "Politely offer: 'Would you like to hear today's news?'"
-            else -> "Make a helpful suggestion if appropriate"
+        return if (relevantSentences.isNotEmpty()) {
+            relevantSentences.joinToString(". ").take(200)
+        } else {
+            summary.take(200) // Return truncated original if no relevant content
         }
     }
     
     /**
-     * Save new chat message and response
+     * Detect polluted messages - strict filtering for content that affects AI quality
+     */
+    private fun isPollutedMessage(message: ChatMessage): Boolean {
+        val aiResponse = message.aiResponse.lowercase().trim()
+        val userMessage = message.userMessage.lowercase().trim()
+        
+        // 1. Error message pollution
+        val errorKeywords = listOf(
+            "sorry", "problem", "error", "failed", "connection", "technical difficulties",
+            "try again", "reopen", "restart", "experiencing", "unable to", "cannot process"
+        )
+        val errorCount = errorKeywords.count { aiResponse.contains(it) }
+        if (errorCount >= 2) {
+            Log.d(TAG, "Message filtered: multiple error keywords")
+            return true
+        }
+        
+        // 2. Incomplete responses
+        if (aiResponse.length < 15 || (aiResponse.endsWith("...") && aiResponse.length < 60)) {
+            Log.d(TAG, "Message filtered: incomplete response")
+            return true
+        }
+        
+        // 3. Repetitive or meaningless content
+        if (isRepetitiveContent(aiResponse)) {
+            Log.d(TAG, "Message filtered: repetitive content")
+            return true
+        }
+        
+        // 4. System prompt leakage
+        val systemLeakPatterns = listOf(
+            "as an ai", "i am an ai", "language model", "i don't have", "i cannot"
+        )
+        if (systemLeakPatterns.any { aiResponse.contains(it) }) {
+            Log.d(TAG, "Message filtered: system prompt leak")
+            return true
+        }
+        
+        // 5. Vague responses
+        if (isVagueResponse(aiResponse)) {
+            Log.d(TAG, "Message filtered: vague response")
+            return true
+        }
+        
+        // 6. Extremely long responses (possible prompt injection)
+        if (aiResponse.length > 2000) {
+            Log.d(TAG, "Message filtered: extremely long response (${aiResponse.length} chars)")
+            return true
+        }
+        
+        return false
+    }
+    
+    /**
+     * Calculate message quality score
+     */
+    private fun calculateMessageQuality(message: ChatMessage, currentQuery: String): Double {
+        var score = 0.5 // Base score
+        
+        val aiResponse = message.aiResponse.trim()
+        val userMessage = message.userMessage.trim()
+        
+        // 1. Length appropriateness (20%)
+        score += when (aiResponse.length) {
+            in 20..150 -> 0.2
+            in 151..300 -> 0.15
+            in 301..500 -> 0.1
+            else -> 0.0
+        }
+        
+        // 2. Content completeness (25%)
+        if (!aiResponse.contains("...") && aiResponse.length > 20) {
+            score += 0.25
+        }
+        
+        // 3. Relevance assessment (30%)
+        if (currentQuery.isNotEmpty()) {
+            val relevanceScore = calculateRelevance(message, currentQuery)
+            score += relevanceScore * 0.3
+        } else {
+            score += 0.15 // Base score when no query
+        }
+        
+        // 4. Freshness (25%)
+        val ageInHours = (System.currentTimeMillis() - message.timestamp) / (1000 * 60 * 60)
+        val freshnessScore = when {
+            ageInHours < 1 -> 0.25
+            ageInHours < 6 -> 0.2
+            ageInHours < 24 -> 0.15
+            ageInHours < 168 -> 0.1 // Within a week
+            else -> 0.05
+        }
+        score += freshnessScore
+        
+        return score.coerceIn(0.0, 1.0)
+    }
+    
+    // === Helper detection methods ===
+    
+    private fun isRepetitiveContent(text: String): Boolean {
+        val words = text.split("\\s+".toRegex()).filter { it.length > 2 }
+        if (words.size < 5) return false
+        
+        val uniqueWords = words.toSet().size
+        val repetitionRatio = uniqueWords.toDouble() / words.size
+        return repetitionRatio < 0.5 // If more than 50% are repeated words
+    }
+    
+    private fun isVagueResponse(response: String): Boolean {
+        val vaguePatterns = listOf(
+            "i understand", "i see", "okay", "alright", "sure", "yes", "no problem"
+        )
+        
+        return response.length < 25 && vaguePatterns.any { response.lowercase().contains(it) }
+    }
+    
+    private fun calculateRelevance(message: ChatMessage, currentQuery: String): Double {
+        val messageText = "${message.userMessage} ${message.aiResponse}".lowercase()
+        val queryWords = currentQuery.lowercase().split("\\s+".toRegex()).filter { it.length > 2 }
+        
+        if (queryWords.isEmpty()) return 0.5
+        
+        val matchingWords = queryWords.count { word -> messageText.contains(word) }
+        return matchingWords.toDouble() / queryWords.size
+    }
+    
+    // === Firebase and local storage logic ===
+    
+    /**
+     * Save chat message with context awareness
      */
     suspend fun saveChatMessage(userMessage: String, aiResponse: String): Result<Unit> {
         return try {
-            val currentUser = auth.currentUser
-            if (currentUser == null) {
-                return Result.failure(Exception("User not authenticated"))
-            }
-            
-            val chatMessage = ChatMessage(
-                userId = currentUser.uid,
-                userMessage = userMessage,
-                aiResponse = aiResponse,
-                timestamp = System.currentTimeMillis()
-            )
-            
-            // 更新推薦追蹤
-            val mentionedFeatures = extractFunctionMentions(aiResponse)
-            mentionedFeatures.forEach { feature ->
-                recordSuggestion(feature)
+            val chatMessage = if (isUserAuthenticated()) {
+                val currentUser = auth.currentUser!!
+                ChatMessage(
+                    userId = currentUser.uid,
+                    userMessage = userMessage,
+                    aiResponse = aiResponse,
+                    timestamp = System.currentTimeMillis()
+                )
+            } else {
+                ChatMessage(
+                    userId = "anonymous",
+                    userMessage = userMessage,
+                    aiResponse = aiResponse,
+                    timestamp = System.currentTimeMillis()
+                )
             }
             
             if (isUserAuthenticated()) {
@@ -500,16 +462,17 @@ class ChatRepository {
                 saveToLocalMemory(chatMessage)
             }
             
-            Log.d(TAG, "Chat message saved successfully")
+            Log.d(TAG, "Message saved successfully")
             Result.success(Unit)
+            
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to save chat message: ${e.message}")
+            Log.e(TAG, "Failed to save message: ${e.message}")
             Result.failure(e)
         }
     }
     
     /**
-     * Load chat history based on user authentication status
+     * Load chat history
      */
     suspend fun loadChatHistory(): Result<List<ChatMessage>> {
         return try {
@@ -524,19 +487,23 @@ class ChatRepository {
         }
     }
     
-    // === 以下為原有方法，保持不變 ===
+    // Private helper methods
+    private fun isUserAuthenticated(): Boolean {
+        val currentUser = auth.currentUser
+        return currentUser != null && !currentUser.isAnonymous
+    }
     
     private suspend fun saveToFirebase(chatMessage: ChatMessage) {
-        val docRef = firestore.collection(CHAT_COLLECTION)
-            .add(chatMessage)
-            .await()
-        
+        val docRef = firestore.collection(CHAT_COLLECTION).add(chatMessage).await()
         val updatedMessage = chatMessage.copy(id = docRef.id)
         val currentHistory = _firebaseChatHistory.value.toMutableList()
         currentHistory.add(updatedMessage)
-        _firebaseChatHistory.value = currentHistory
         
-        checkAndCleanupFirebaseMessages()
+        if (currentHistory.size > MAX_STORED_MESSAGES) {
+            _firebaseChatHistory.value = currentHistory.takeLast(MAX_STORED_MESSAGES)
+        } else {
+            _firebaseChatHistory.value = currentHistory
+        }
     }
     
     private fun saveToLocalMemory(chatMessage: ChatMessage) {
@@ -544,10 +511,8 @@ class ChatRepository {
         val currentHistory = _localChatHistory.value.toMutableList()
         currentHistory.add(updatedMessage)
         
-        if (currentHistory.size > MAX_MESSAGES) {
-            val messagesToKeep = currentHistory.takeLast(MESSAGES_TO_KEEP)
-            _localChatHistory.value = messagesToKeep
-            Log.d(TAG, "Local chat history cleaned up")
+        if (currentHistory.size > MAX_STORED_MESSAGES) {
+            _localChatHistory.value = currentHistory.takeLast(MAX_STORED_MESSAGES)
         } else {
             _localChatHistory.value = currentHistory
         }
@@ -562,6 +527,7 @@ class ChatRepository {
         val querySnapshot = firestore.collection(CHAT_COLLECTION)
             .whereEqualTo("userId", currentUser.uid)
             .orderBy("timestamp", Query.Direction.ASCENDING)
+            .limit(MAX_STORED_MESSAGES.toLong())
             .get()
             .await()
         
@@ -575,14 +541,13 @@ class ChatRepository {
                     timestamp = document.getLong("timestamp") ?: 0L
                 )
             } catch (e: Exception) {
-                Log.w(TAG, "Failed to parse chat message: ${e.message}")
+                Log.w(TAG, "Failed to parse message: ${e.message}")
                 null
             }
         }
         
         _firebaseChatHistory.value = messages
         Log.d(TAG, "Loaded ${messages.size} messages from Firebase")
-        
         return Result.success(messages)
     }
     
@@ -593,11 +558,6 @@ class ChatRepository {
             } else {
                 clearLocalHistory()
             }
-            
-            // 清空推薦記錄
-            suggestionHistory.clear()
-            recentlyMentionedFeatures.clear()
-            
             Log.d(TAG, "Chat history cleared")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -628,54 +588,6 @@ class ChatRepository {
         _localChatHistory.value = emptyList()
     }
     
-    private suspend fun checkAndCleanupFirebaseMessages() {
-        try {
-            val currentUser = auth.currentUser
-            if (currentUser == null || currentUser.isAnonymous) return
-            
-            val querySnapshot = firestore.collection(CHAT_COLLECTION)
-                .whereEqualTo("userId", currentUser.uid)
-                .orderBy("timestamp", Query.Direction.DESCENDING)
-                .get()
-                .await()
-            
-            val totalMessages = querySnapshot.size()
-            
-            if (totalMessages > MAX_MESSAGES) {
-                Log.d(TAG, "Cleanup needed: $totalMessages messages")
-                
-                val messagesToDelete = querySnapshot.documents.drop(MESSAGES_TO_KEEP)
-                
-                messagesToDelete.chunked(500).forEach { batch ->
-                    val firestoreBatch = firestore.batch()
-                    batch.forEach { document ->
-                        firestoreBatch.delete(document.reference)
-                    }
-                    firestoreBatch.commit().await()
-                }
-                
-                Log.d(TAG, "Cleaned up ${messagesToDelete.size} old messages")
-                loadFromFirebase()
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to cleanup: ${e.message}")
-        }
-    }
-    
-    suspend fun getChatStats(): ChatStats {
-        return try {
-            val messages = chatHistory.value
-            val messageCount = messages.size
-            val firstMessageTime = messages.firstOrNull()?.timestamp ?: 0L
-            val storageType = if (isUserAuthenticated()) "Firebase" else "Local"
-            
-            ChatStats(messageCount, firstMessageTime, storageType)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to get stats: ${e.message}")
-            ChatStats(0, 0L, "Unknown")
-        }
-    }
-    
     suspend fun onAuthenticationChanged() {
         try {
             if (isUserAuthenticated()) {
@@ -690,30 +602,55 @@ class ChatRepository {
         }
     }
     
-    // 資料類別定義
-    data class ConversationPattern(
-        val recentTopics: Set<String> = emptySet(),
-        val recentlyMentionedFunctions: List<String> = emptyList(),
-        val isRepetitiveQuery: Boolean = false,
-        val userMood: UserMood = UserMood.NEUTRAL,
-        val messageCount: Int = 0
-    )
-    
-    enum class UserMood {
-        NEUTRAL,
-        FOCUSED,
-        FRUSTRATED,
-        EXPLORING
+    /**
+     * Get context quality statistics
+     */
+    fun getContextQualityStats(): Map<String, Any> {
+        val allMessages = chatHistory.value
+        val cleanMessages = allMessages.filter { !isPollutedMessage(it) }
+        val pollutedCount = allMessages.size - cleanMessages.size
+        
+        return mapOf(
+            "totalMessages" to allMessages.size,
+            "cleanMessages" to cleanMessages.size,
+            "pollutedMessages" to pollutedCount,
+            "pollutionRate" to if (allMessages.isNotEmpty()) 
+                String.format("%.1f%%", (pollutedCount.toDouble() / allMessages.size) * 100) else "0%",
+            "storageType" to if (isUserAuthenticated()) "Firebase" else "Local"
+        )
     }
     
-    sealed class SuggestionStrategy {
-        object NONE : SuggestionStrategy()
-        data class GENTLE(val feature: String) : SuggestionStrategy()
+    /**
+     * Get chat statistics for debugging
+     */
+    suspend fun getChatStats(): ChatStats {
+        return try {
+            val messages = chatHistory.value
+            val messageCount = messages.size
+            val firstMessageTime = messages.firstOrNull()?.timestamp ?: 0L
+            val storageType = if (isUserAuthenticated()) "Firebase" else "Local"
+            
+            ChatStats(messageCount, firstMessageTime, storageType)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get stats: ${e.message}")
+            ChatStats(0, 0L, "Unknown")
+        }
     }
 }
 
+/**
+ * Chat statistics data class
+ */
 data class ChatStats(
     val totalMessages: Int,
     val firstMessageTime: Long,
     val storageType: String
+)
+
+/**
+ * Message with quality score for internal processing
+ */
+data class MessageWithScore(
+    val message: ChatMessage,
+    val qualityScore: Double
 )
