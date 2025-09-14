@@ -1,4 +1,4 @@
-// functions/NewsFunctions.kt - 正確的 The News API 實現
+// functions/NewsFunctions.kt - The News API Implementation
 package functions
 
 import android.content.Context
@@ -11,7 +11,7 @@ import java.net.URLEncoder
 import java.io.IOException
 
 /**
- * News Functions - 正確的 The News API 實現
+ * News Functions - The News API Implementation
  */
 object NewsFunctions {
     
@@ -26,7 +26,6 @@ object NewsFunctions {
     
     private val newsCategories = mapOf(
         "health" to "health",
-        "general" to "general", 
         "science" to "science",
         "business" to "business",
         "sports" to "sports",
@@ -43,7 +42,7 @@ object NewsFunctions {
      */
     suspend fun execute(functionName: String, arguments: String): String {
         return try {
-            Log.d(TAG, "=== NewsFunctions.execute 開始 ===")
+            Log.d(TAG, "=== NewsFunctions.execute started ===")
             Log.d(TAG, "Executing news function: $functionName")
             
             when (functionName) {
@@ -84,9 +83,6 @@ I can provide you with the following types of news:
 **Entertainment** (entertainment) 
    Celebrity news, movies, music, pop culture
 
-**General** (general)
-   Breaking news, world events, important headlines
-
 **Health** (health)
    Medical news, health tips, wellness information
 
@@ -114,7 +110,6 @@ Which type of news would you like to see? Just tell me the category name and I'l
         val categoryDescriptions = mapOf(
             "business" to "Business & Finance",
             "entertainment" to "Entertainment & Celebrity", 
-            "general" to "General & World News",
             "health" to "Health & Medical",
             "science" to "Science & Research",
             "sports" to "Sports & Games",
@@ -170,13 +165,13 @@ Which type of news would you like to see? Just tell me the category name and I'l
      */
     private suspend fun getNewsByCategory(arguments: String): String = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "=== getNewsByCategory 開始 ===")
+            Log.d(TAG, "=== getNewsByCategory started ===")
             val args = parseArguments(arguments)
-            val category = args["category"] ?: "general"
+            val category = args["category"] ?: "business"
             val limit = args["limit"]?.toIntOrNull() ?: 10
             val locale = args["country"] ?: "us"
             
-            Log.d(TAG, "分類參數: category=$category, limit=$limit, locale=$locale")
+            Log.d(TAG, "Category parameters: category=$category, limit=$limit, locale=$locale")
             
             // Check if category is valid
             if (!newsCategories.containsKey(category)) {
@@ -268,7 +263,7 @@ Which type of news would you like to see? Just tell me the category name and I'l
         try {
             val args = parseArguments(arguments)
             val categories = args["categories"]?.split(",")?.map { it.trim() } 
-                ?: listOf("general", "health", "technology")
+                ?: listOf("health", "technology", "business")
             
             val results = mutableMapOf<String, List<TheNewsAPIArticle>>()
             
@@ -287,11 +282,11 @@ Which type of news would you like to see? Just tell me the category name and I'l
     }
     
     // ============================================================================
-    // The News API 調用方法
+    // The News API Methods
     // ============================================================================
     
     /**
-     * 獲取頂級新聞 - 使用 /news/top 端點
+     * Fetch top news - using /news/top endpoint
      */
     private suspend fun fetchTopNews(
         locale: String = "us",
@@ -299,7 +294,7 @@ Which type of news would you like to see? Just tell me the category name and I'l
         limit: Int = 20
     ): Result<List<TheNewsAPIArticle>> = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "=== fetchTopNews 開始 ===")
+            Log.d(TAG, "=== fetchTopNews started ===")
             
             var apiUrl = "$BASE_URL/news/top?" +
                     "api_token=$API_TOKEN&" +
@@ -310,32 +305,32 @@ Which type of news would you like to see? Just tell me the category name and I'l
             if (category != null && newsCategories.containsKey(category)) {
                 val mappedCategory = newsCategories[category]
                 apiUrl += "&categories=$mappedCategory"
-                Log.d(TAG, "添加分類參數: $category -> $mappedCategory")
+                Log.d(TAG, "Added category parameter: $category -> $mappedCategory")
             }
             
-            Log.d(TAG, "完整 API URL: $apiUrl")
+            Log.d(TAG, "Complete API URL: $apiUrl")
             
             val response = URL(apiUrl).readText()
-            Log.d(TAG, "API 原始回應: ${response.take(500)}...")
+            Log.d(TAG, "Raw API response: ${response.take(500)}...")
             
             val newsResponse = json.decodeFromString<TheNewsAPIResponse>(response)
-            Log.d(TAG, "解析成功，找到 ${newsResponse.data?.size ?: 0} 篇文章")
+            Log.d(TAG, "Parse successful, found ${newsResponse.data?.size ?: 0} articles")
             
-            // The News API 回傳的是文章列表，不是按分類分組的
+            // The News API returns a list of articles, not grouped by category
             val articles = newsResponse.data ?: emptyList()
             
             Result.success(articles)
             
         } catch (e: Exception) {
-            Log.e(TAG, "API 調用異常: ${e.message}")
-            Log.e(TAG, "異常類型: ${e::class.java.name}")
-            Log.e(TAG, "詳細錯誤: ", e)
+            Log.e(TAG, "API call exception: ${e.message}")
+            Log.e(TAG, "Exception type: ${e::class.java.name}")
+            Log.e(TAG, "Detailed error: ", e)
             Result.failure(IOException("Failed to fetch top news: ${e.message}", e))
         }
     }
     
     /**
-     * 搜索所有新聞 - 使用 /news/all 端點
+     * Search all news - using /news/all endpoint
      */
     private suspend fun searchAllNews(
         query: String,
@@ -349,7 +344,7 @@ Which type of news would you like to see? Just tell me the category name and I'l
                     "language=en&" +
                     "limit=$limit"
             
-            Log.d(TAG, "搜索 API URL: $apiUrl")
+            Log.d(TAG, "Search API URL: $apiUrl")
             
             val response = URL(apiUrl).readText()
             val newsResponse = json.decodeFromString<TheNewsAPIResponse>(response)
@@ -359,13 +354,13 @@ Which type of news would you like to see? Just tell me the category name and I'l
             Result.success(articles)
             
         } catch (e: Exception) {
-            Log.e(TAG, "搜索新聞失敗: ${e.message}")
+            Log.e(TAG, "Search news failed: ${e.message}")
             Result.failure(IOException("Failed to search news: ${e.message}", e))
         }
     }
     
     // ============================================================================
-    // 格式化輸出方法
+    // Formatting Methods
     // ============================================================================
     
     /**
@@ -466,12 +461,12 @@ Which type of news would you like to see? Just tell me the category name and I'l
 }
 
 // ============================================================================
-// The News API 響應數據類 - 修正版
+// The News API Response Data Classes - Corrected Version
 // ============================================================================
 
 @Serializable
 data class TheNewsAPIResponse(
-    val data: List<TheNewsAPIArticle>? = null,  // 修正：直接是文章列表
+    val data: List<TheNewsAPIArticle>? = null,  // Corrected: Direct article list
     val meta: TheNewsAPIMeta? = null
 )
 

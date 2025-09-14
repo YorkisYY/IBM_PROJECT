@@ -160,9 +160,9 @@ object WatsonAIEnhanced {
             
         } catch (e: Exception) {
             Log.e(TAG, "Enhanced AI processing failed: ${e.message}")
-            // 提供默認錯誤回覆
+
             AIResult(
-                success = true,  // 改為 true 以提供友好的錯誤訊息
+                success = true,  
                 response = "I'm experiencing some technical difficulties right now. Please try again in a moment.",
                 error = null
             )
@@ -269,7 +269,7 @@ object WatsonAIEnhanced {
                 return aiResponse
             }
             
-            // Fix incorrect function names - 確保使用 var
+            // Fix incorrect function names 
             val correctedName = if (functionCall.name == "read_latest_message") {
                 Log.d(TAG, "Fixed function name: read_latest_message -> get_latest_message")
                 "get_latest_message"
