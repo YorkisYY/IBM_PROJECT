@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -7,23 +10,43 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+// Load keystore properties
+val keystorePropertiesFile = rootProject.file("gradle.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 android {
-    namespace = "com.example.ibm_project"
+    namespace = "com.yorktseng.ibmproject"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.ibm_project"
+        applicationId = "com.yorktseng.ibmproject"
         minSdk = 24  // ARCore minimum requirement
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            if (keystoreProperties.containsKey("MYAPP_RELEASE_STORE_FILE")) {
+                storeFile = file(keystoreProperties["MYAPP_RELEASE_STORE_FILE"] as String)
+                storePassword = keystoreProperties["MYAPP_RELEASE_STORE_PASSWORD"] as String
+                keyAlias = keystoreProperties["MYAPP_RELEASE_KEY_ALIAS"] as String
+                keyPassword = keystoreProperties["MYAPP_RELEASE_KEY_PASSWORD"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -102,21 +125,19 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("androidx.fragment:fragment-ktx:1.6.2")
 
-    // Compose BOM and core dependencies - Use BOM for unified version management
+    // Compose BOM and core dependencies
     implementation(platform("androidx.compose:compose-bom:2024.02.00"))
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material")  // Material 2
+    implementation("androidx.compose.material:material")
     implementation("androidx.compose.runtime:runtime")
     implementation("androidx.compose.runtime:runtime-livedata")
     implementation("androidx.activity:activity-compose:1.8.2")
-    
-    // ===== Material Icons - Let BOM manage version =====
-    implementation("androidx.compose.material:material-icons-extended")  // Remove version number, let BOM control
+    implementation("androidx.compose.material:material-icons-extended")
 
-    // ===== Network API dependencies =====
+    // Network API dependencies
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
@@ -135,7 +156,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
 
-    // Mathematical operations (3D calculations)
+    // Mathematical operations
     implementation("dev.romainguy:kotlin-math:1.5.3")
 
     // Permission handling
@@ -144,44 +165,35 @@ dependencies {
     // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
     
-    // ===== Unit Testing =====
+    // Unit Testing
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.robolectric:robolectric:4.11.1")  // Android Unit Tests
-    testImplementation("io.mockk:mockk:1.13.8")  // Kotlin Mocking
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")  // Coroutine Testing
-    testImplementation("androidx.arch.core:core-testing:2.2.0")  // LiveData Testing
-    testImplementation("app.cash.turbine:turbine:1.0.0")  // Flow Testing
-    testImplementation("com.google.truth:truth:1.1.4")  // Better Assertions
+    testImplementation("org.robolectric:robolectric:4.11.1")
+    testImplementation("io.mockk:mockk:1.13.8")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
+    testImplementation("app.cash.turbine:turbine:1.0.0")
+    testImplementation("com.google.truth:truth:1.1.4")
     testImplementation("org.mockito:mockito-core:5.7.0")  
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")  
-    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")  // Mock HTTP Server
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     
-    // ===== Android Integration Testing =====
+    // Android Integration Testing
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation("androidx.test:runner:1.5.2")
     androidTestImplementation("androidx.test:rules:1.5.0")
-    androidTestImplementation("androidx.test.espresso:espresso-intents:3.5.1")  // Intent Testing
-    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")  // Coroutine Testing for Android Tests
+    androidTestImplementation("androidx.test.espresso:espresso-intents:3.5.1")
+    androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     
-    // ===== Compose Testing =====
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")  // BOM manages version
+    // Compose Testing
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")     
     debugImplementation("androidx.compose.ui:ui-tooling")          
-        // ===== Add these Firebase dependencies at the end =====
     
-    // Firebase BOM (version management)
+    // Firebase dependencies
     implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
-    
-    // Firebase Auth
     implementation("com.google.firebase:firebase-auth")
-    
-    // Firebase Firestore (database)
     implementation("com.google.firebase:firebase-firestore")
-    
-    // Google Play Services Auth (Google Sign-In)
     implementation("com.google.android.gms:play-services-auth:21.2.0")
-    
-    // Coroutines Tasks (Firebase coroutine support)
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
 }
