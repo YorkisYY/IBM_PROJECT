@@ -149,7 +149,7 @@ app/
 
 The system follows a layered architecture with clear separation of concerns, integrating AR capabilities, AI processing, and multiple external services. The architecture ensures smooth real-time interaction between AR models and AI responses.
 <p align="center">
-  <img src="docs/architecture-diagram.png" width="250" alt="AI Weather architecture diagram">
+  <img src="docs/architecture-diagram.png" width="1050" alt="AI Weather architecture diagram">
 </p>
 ### Key Architecture Components
 - **UI Layer**: Jetpack Compose with AR dialog tracking
