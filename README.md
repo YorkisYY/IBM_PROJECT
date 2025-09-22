@@ -474,7 +474,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
 <p align="center">
   <img src="docs/screenshots/ar-cat-1.png" width="250" alt="AR Cat Model in Room">
   <img src="docs/screenshots/ar-cat-2.png" width="250" alt="Multiple AR Cats">
-  <img src="docs/screenshots/ar-cat-weather.png" width="250" alt="AI Weather Response">
+  <img src="docs/screenshots/ar-cat-3.png" width="250" alt="AI Weather Response">
 </p>
 
 #### Features Demonstrated:
