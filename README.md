@@ -1,21 +1,65 @@
-
 # AR AI Assistant with Watson Integration
 
 An innovative Android AR application that combines Augmented Reality, AI-powered conversations, and intelligent function calling to create an interactive 3D cat assistant for elderly users.
-Detailed function with vdieo link: https://drive.google.com/file/d/15YkcbYLKabj9ReEJdZ6UtxJAz2emcyin/view?usp=sharing
+
+The real function can be viewed in video by the link:  https://drive.google.com/file/d/15YkcbYLKabj9ReEJdZ6UtxJAz2emcyin/view?usp=sharing
+## 📸 Live Demo & Screenshots
+
+### AR Cat Interaction in Action
+<p align="center">
+  <img src="docs/screenshots/ar-cat-1.png" width="250" alt="AR Cat Model in Room">
+  <img src="docs/screenshots/ar-cat-2.png" width="250" alt="Multiple AR Cats">
+  <img src="docs/screenshots/ar-cat-3.png" width="250" alt="AI Weather Response">
+</p>
+
 ## 🌟 Key Features
 
-### AR Cat Interaction
-- **3D Cat Models**: Place and interact with cute AR cats in your environment using ARCore
-- **Multi-Model Support**: Place multiple cats with collision detection
-- **360° Rotation**: Smooth touch-based rotation with adjustable sensitivity
-- **Real-time Tracking**: Advanced plane detection and instant placement modes
+### Advanced AR Cat Interaction
 
-### AI-Powered Conversations
-- **Watson AI Integration**: Natural language processing with IBM Watson
-- **Context-Aware Responses**: Maintains conversation history for contextual understanding
-- **Elderly-Friendly Design**: Optimized for senior users with clear, caring responses
-- **Dynamic Dialog Positioning**: AI responses follow the first placed cat model
+#### 🎯 Intelligent Collision Detection System
+- **Distance-Based Safety Zones**: Implements a 0.3-meter minimum distance between models to prevent overlap
+- **Real-time Collision Checking**: Before placing a new cat, the system calculates distances to all existing models
+- **Visual Feedback**: Users receive immediate feedback if placement would cause overlap
+- **Touch Detection Radius**: 0.3-meter radius for accurate model selection without accidental touches
+
+```kotlin
+// Collision detection implementation
+private fun checkPlacementOverlap(newWorldPosition: Position): Boolean {
+    return placedModelNodes.any { existingModel ->
+        val distance = calculateDistance(newWorldPosition, existingModel.worldPosition)
+        distance < SAFE_PLACEMENT_DISTANCE // 0.3m safety zone
+    }
+}
+```
+
+#### 🔄 360° Smooth Rotation System
+- **Velocity-Based Rotation**: Implements physics-based rotation with velocity damping (0.85 factor)
+- **Smooth Interpolation**: Uses SMOOTH_FACTOR of 0.15 for buttery-smooth transitions
+- **Gesture Recognition**: Distinguishes between tap (selection) and drag (rotation)
+- **Adjustable Sensitivity**: X and Y axis sensitivity can be customized in settings
+- **State Preservation**: Each model remembers its rotation state when deselected
+
+```kotlin
+// Rotation features
+- Accumulated rotation values tracking
+- Velocity damping for realistic physics
+- Minimum rotation distance threshold (10px)
+- Independent X/Y axis control
+```
+
+### AI-Powered Conversations with Fine-Tuned Watson
+
+#### 🤖 Fine-Tuned Watson AI Model
+- **Custom Training**: Fine-tuned specifically for elderly care conversations
+- **Contextual Understanding**: Enhanced with conversation history management
+- **Caring Personality**: Trained to respond with warmth and patience
+- **Function Recognition**: Optimized to detect user intents and trigger appropriate functions
+
+#### 💬 Intelligent Context Management
+- **Query-Aware Context**: Extracts only relevant conversation history
+- **Pollution Detection**: Filters out error messages and incomplete responses
+- **Smart Summarization**: Limits context to 100 characters for efficiency
+- **Relevance Scoring**: Prioritizes high-quality messages for context
 
 ### Intelligent Function Calling
 - **Weather Services**: Real-time weather data with GPS/IP-based location detection
@@ -103,62 +147,15 @@ app/
 
 ## 🏗️ Technical Architecture
 
-### System Architecture Diagram
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         USER INTERFACE                       │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │            Jetpack Compose UI Layer                   │  │
-│  │  ├── LoginScreen    ├── ARControlButtons            │  │
-│  │  ├── UserInputField ├── DialogTracking              │  │
-│  │  └── Settings       └── Chat Bubbles                │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────┐
-│                      AR LAYER (ARCore)                       │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │         ARSceneViewRenderer (State Manager)           │  │
-│  │  ├── Session Management  ├── Plane Detection         │  │
-│  │  ├── Frame Updates       └── Tracking Status         │  │
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │          ARTouchHandler (Interaction)                 │  │
-│  │  ├── Model Placement     ├── Collision Detection     │  │
-│  │  ├── Model Selection     └── Rotation Control        │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────┐
-│                    AI PROCESSING LAYER                       │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │            WatsonAIEnhanced (Main Service)            │  │
-│  │  ├── Context Management  ├── Function Detection      │  │
-│  │  ├── Prompt Generation   └── Response Processing     │  │
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │         Function Calling Manager                      │  │
-│  │  ├── Weather API     ├── SMS Reader                 │  │
-│  │  ├── News API        ├── Podcast API                │  │
-│  │  └── Location API    └── Service Routing            │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────┐
-│                     DATA LAYER                               │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │              Firebase Services                        │  │
-│  │  ├── Authentication (Google Sign-In)                 │  │
-│  │  ├── Firestore (Chat History)                        │  │
-│  │  └── User Profiles                                   │  │
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │              Local Storage                            │  │
-│  │  ├── SharedPreferences  └── Memory Cache             │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-```
+The system follows a layered architecture with clear separation of concerns, integrating AR capabilities, AI processing, and multiple external services. The architecture ensures smooth real-time interaction between AR models and AI responses.
+<p align="center">
+  <img src="docs/architecture-diagram.png" width="250" alt="AI Weather architecture diagram">
+</p>
+### Key Architecture Components
+- **UI Layer**: Jetpack Compose with AR dialog tracking
+- **AR Services**: ARCore + SceneView for 3D model management  
+- **AI Processing**: Fine-tuned Watson AI with function calling
+- **Data Layer**: Firebase for authenticated users, local storage for anonymous sessions
 
 ## 🔥 Core Components Details
 
@@ -194,16 +191,22 @@ app/
 
 ### AI Integration (`/watsonx`)
 
-#### WatsonAIEnhanced.kt
-- **Purpose**: Main AI service orchestrator
+#### WatsonAIEnhanced.kt with Fine-Tuned Model
+- **Purpose**: Main AI service orchestrator with fine-tuned Watson model
+- **Fine-Tuning Details**:
+  - Custom trained for elderly care conversations
+  - Enhanced empathy and patience in responses
+  - Optimized function detection accuracy
+  - Specialized vocabulary for senior users
 - **Flow**:
   ```
   User Input 
     → Context Extraction (ChatRepository)
+    → Fine-Tuned Model Processing
     → Keyword Detection (PromptManager)
     → Function Recognition (FunctionCallManager)
     → Service Execution
-    → Response Generation
+    → Natural Language Response Generation
   ```
 
 #### ContextManager.kt
@@ -449,10 +452,6 @@ news.api.token=your_token_here
 - Integration tests for user flows
 - Documentation for public APIs
 
-## 📄 License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
-
 ## 👨‍💻 Author
 
 **York Yi**
@@ -470,37 +469,31 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
 
 ## 📸 Screenshots & Demo
 
-### AR Cat Interaction
-<p align="center">
-  <img src="docs/screenshots/ar-cat-1.png" width="250" alt="AR Cat Model in Room">
-  <img src="docs/screenshots/ar-cat-2.png" width="250" alt="Multiple AR Cats">
-  <img src="docs/screenshots/ar-cat-3.png" width="250" alt="AI Weather Response">
-</p>
+### Real-time Features Demonstration
+The screenshots showcase the complete AR-AI integration:
 
-#### Features Demonstrated:
-1. **3D Cat Model Placement**: Place cute AR cats on detected surfaces with realistic scaling
-2. **Plane Detection Visualization**: White dots indicate detected planes for optimal placement
-3. **AI Dialog Integration**: Watson AI responses appear as floating dialogs above the first cat
-4. **Control Panel**: 
-   - **P (Plane)**: Switch between placement modes
-   - **Clear Planes**: Reset AR plane detection data
-   - **Settings**: Adjust rotation sensitivity
-   - **Clear Models**: Remove all placed cats
-   - **Logout**: Sign out from Firebase
+#### 1. AR Cat Placement & Controls
+- Clean interface with intuitive control panel
+- Real-time plane detection visualization
+- Multiple placement modes (Plane/Instant/Auto)
 
-### Real-time AI Function Calling
-The third screenshot shows the weather function in action:
-- User asks about weather through natural language
-- AI detects weather intent and calls `get_current_weather()`
-- Location detected: "Taipei, Taiwan"
-- Real-time weather data: 26°C with overcast conditions
-- Response appears as an elegant blue dialog following the AR cat
+#### 2. Collision Detection in Action
+- Multiple cats placed with automatic spacing
+- Visual feedback for safe placement zones
+- Prevents model overlap with 0.3m safety radius
+
+#### 3. AI Weather Function Response
+- Natural language query: "What's the weather?"
+- Automatic location detection: Taipei, Taiwan
+- Real-time data: 26°C with overcast conditions
+- Response displayed as floating dialog above AR cat
 
 ### UI Components
 - **Voice Input**: Green microphone button for speech-to-text
 - **Send Button**: Blue arrow for sending messages
 - **Input Field**: "Start your chat!" prompt for elderly-friendly interaction
-- **Status Bar**: Shows current time, network, and battery status
+- **Mode Toggle**: Switch between AR placement strategies
+- **Settings**: Adjust rotation sensitivity and preferences
 
 ---
 
