@@ -41,6 +41,35 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:60668137869:android:5604a754dcedf19b48edc4",
+        "android_client_info": {
+          "package_name": "com.yorktseng.ibmproject"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "60668137869-mpodhia3c89b9va5mp84dvu6tgb6c54o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0dHeGIEohXY0j_pgHsHBqzN5dkdgfDKU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "60668137869-mpodhia3c89b9va5mp84dvu6tgb6c54o.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

@@ -18,7 +18,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import com.example.ibm_project.R
+import com.yorktseng.ibmproject.R
 
 class AuthRepository(private val context: Context) {
     
