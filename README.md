@@ -12,6 +12,17 @@ The real function can be viewed in video by the link:  https://drive.google.com/
   <img src="docs/screenshots/ar-cat-3.png" width="250" alt="AI Weather Response">
 </p>
 
+
+The real function can be viewed in video by the link:  https://drive.google.com/file/d/15YkcbYLKabj9ReEJdZ6UtxJAz2emcyin/view?usp=sharing
+## 📸 Live Demo & Screenshots
+
+### AR Cat Interaction in Action
+<p align="center">
+  <img src="docs/screenshots/ar-cat-1.png" width="250" alt="AR Cat Model in Room">
+  <img src="docs/screenshots/ar-cat-2.png" width="250" alt="Multiple AR Cats">
+  <img src="docs/screenshots/ar-cat-3.png" width="250" alt="AI Weather Response">
+</p>
+
 ## 🌟 Key Features
 
 ### Advanced AR Cat Interaction
@@ -46,7 +57,52 @@ private fun checkPlacementOverlap(newWorldPosition: Position): Boolean {
 - Minimum rotation distance threshold (10px)
 - Independent X/Y axis control
 ```
+### Advanced AR Cat Interaction
 
+#### 🎯 Intelligent Collision Detection System
+- **Distance-Based Safety Zones**: Implements a 0.3-meter minimum distance between models to prevent overlap
+- **Real-time Collision Checking**: Before placing a new cat, the system calculates distances to all existing models
+- **Visual Feedback**: Users receive immediate feedback if placement would cause overlap
+- **Touch Detection Radius**: 0.3-meter radius for accurate model selection without accidental touches
+
+```kotlin
+// Collision detection implementation
+private fun checkPlacementOverlap(newWorldPosition: Position): Boolean {
+    return placedModelNodes.any { existingModel ->
+        val distance = calculateDistance(newWorldPosition, existingModel.worldPosition)
+        distance < SAFE_PLACEMENT_DISTANCE // 0.3m safety zone
+    }
+}
+```
+
+#### 🔄 360° Smooth Rotation System
+- **Velocity-Based Rotation**: Implements physics-based rotation with velocity damping (0.85 factor)
+- **Smooth Interpolation**: Uses SMOOTH_FACTOR of 0.15 for buttery-smooth transitions
+- **Gesture Recognition**: Distinguishes between tap (selection) and drag (rotation)
+- **Adjustable Sensitivity**: X and Y axis sensitivity can be customized in settings
+- **State Preservation**: Each model remembers its rotation state when deselected
+
+```kotlin
+// Rotation features
+- Accumulated rotation values tracking
+- Velocity damping for realistic physics
+- Minimum rotation distance threshold (10px)
+- Independent X/Y axis control
+```
+
+### AI-Powered Conversations with Fine-Tuned Watson
+
+#### 🤖 Fine-Tuned Watson AI Model
+- **Custom Training**: Fine-tuned specifically for elderly care conversations
+- **Contextual Understanding**: Enhanced with conversation history management
+- **Caring Personality**: Trained to respond with warmth and patience
+- **Function Recognition**: Optimized to detect user intents and trigger appropriate functions
+
+#### 💬 Intelligent Context Management
+- **Query-Aware Context**: Extracts only relevant conversation history
+- **Pollution Detection**: Filters out error messages and incomplete responses
+- **Smart Summarization**: Limits context to 100 characters for efficiency
+- **Relevance Scoring**: Prioritizes high-quality messages for context
 ### AI-Powered Conversations with Fine-Tuned Watson
 
 #### 🤖 Fine-Tuned Watson AI Model
@@ -198,14 +254,23 @@ The system follows a layered architecture with clear separation of concerns, int
   - Enhanced empathy and patience in responses
   - Optimized function detection accuracy
   - Specialized vocabulary for senior users
+#### WatsonAIEnhanced.kt with Fine-Tuned Model
+- **Purpose**: Main AI service orchestrator with fine-tuned Watson model
+- **Fine-Tuning Details**:
+  - Custom trained for elderly care conversations
+  - Enhanced empathy and patience in responses
+  - Optimized function detection accuracy
+  - Specialized vocabulary for senior users
 - **Flow**:
   ```
   User Input 
     → Context Extraction (ChatRepository)
     → Fine-Tuned Model Processing
+    → Fine-Tuned Model Processing
     → Keyword Detection (PromptManager)
     → Function Recognition (FunctionCallManager)
     → Service Execution
+    → Natural Language Response Generation
     → Natural Language Response Generation
   ```
 
@@ -452,10 +517,6 @@ news.api.token=your_token_here
 - Integration tests for user flows
 - Documentation for public APIs
 
-## 📄 License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
-
 ## 👨‍💻 Author
 
 **York Yi**
@@ -491,11 +552,31 @@ The screenshots showcase the complete AR-AI integration:
 - Automatic location detection: Taipei, Taiwan
 - Real-time data: 26°C with overcast conditions
 - Response displayed as floating dialog above AR cat
+### Real-time Features Demonstration
+The screenshots showcase the complete AR-AI integration:
+
+#### 1. AR Cat Placement & Controls
+- Clean interface with intuitive control panel
+- Real-time plane detection visualization
+- Multiple placement modes (Plane/Instant/Auto)
+
+#### 2. Collision Detection in Action
+- Multiple cats placed with automatic spacing
+- Visual feedback for safe placement zones
+- Prevents model overlap with 0.3m safety radius
+
+#### 3. AI Weather Function Response
+- Natural language query: "What's the weather?"
+- Automatic location detection: Taipei, Taiwan
+- Real-time data: 26°C with overcast conditions
+- Response displayed as floating dialog above AR cat
 
 ### UI Components
 - **Voice Input**: Green microphone button for speech-to-text
 - **Send Button**: Blue arrow for sending messages
 - **Input Field**: "Start your chat!" prompt for elderly-friendly interaction
+- **Mode Toggle**: Switch between AR placement strategies
+- **Settings**: Adjust rotation sensitivity and preferences
 - **Mode Toggle**: Switch between AR placement strategies
 - **Settings**: Adjust rotation sensitivity and preferences
 
